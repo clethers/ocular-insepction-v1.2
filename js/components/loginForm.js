@@ -6,6 +6,7 @@ import { supabaseService } from '../services/supabaseService.js';
 import { escapeHTML, isSafeRedirectUrl, LoginRateLimiter } from '../utils/security.js';
 import { DEMO_ACCOUNTS, USER_ROLES } from '../services/userService.js';
 import { AuthGuard } from './authGuard.js';
+import logoUrl from '../../assets/ecoworks-logo.png';
 
 export class LoginForm {
   constructor(container) {
@@ -19,7 +20,7 @@ export class LoginForm {
           
           <!-- Brand Header -->
           <div style="text-align: center; margin-bottom: 1.5rem;">
-            <img src="./assets/ecoworks-logo.png" alt="EcoWorks Logo" style="height: 56px; margin-bottom: 0.75rem;" />
+            <img src="${logoUrl}" alt="EcoWorks Logo" style="height: 56px; margin-bottom: 0.75rem;" />
             <h1 style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin-bottom: 0.25rem;">
               Synx Portal
             </h1>
