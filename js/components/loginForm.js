@@ -115,68 +115,88 @@ export class LoginForm {
       formSignin.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // 1. Rate Limiting Check
-        const lockStatus = LoginRateLimiter.isLockedOut();
-        if (lockStatus.locked) {
-          this.showAlert(`Security Lockout Active: Too many failed login attempts. Please try again in ${lockStatus.remainingSec}s.`);
-          return;
-        }
-
-        // 2. Input Extraction
-        const rawEmail = emailInput?.value || '';
-        const rawPassword = passInput?.value || '';
-
-        const email = escapeHTML(rawEmail.trim());
-        const password = rawPassword.trim();
-
-        if (!email || !password) {
-          this.showAlert('Please enter both email address and password.');
-          return;
-        }
-
-        // Match against demo accounts or cloud user
-        const matchedDemo = DEMO_ACCOUNTS.find(a => a.email.toLowerCase() === email.toLowerCase());
-        let role = matchedDemo ? matchedDemo.role : USER_ROLES.FIELD_INSPECTOR;
-        let fullName = matchedDemo ? matchedDemo.fullName : 'Authorized User';
-
-        if (!matchedDemo && email.includes('@')) {
-          const parts = email.split('@')[0].split('.');
-          fullName = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
-        }
-
-        if (supabaseService.isConfigured()) {
-          try {
-            const { data, error } = await supabaseService.client.auth.signInWithPassword({
-              email: rawEmail,
-              password: rawPassword
-            });
-            if (!error && data?.user) {
-              fullName = data.user.user_metadata?.full_name || fullName;
-              role = data.user.user_metadata?.role || role;
-            }
-          } catch (err) {
-            console.warn('[Synx Auth] Supabase auth notice:', err.message);
+        try {
+          // 1. Rate Limiting Check
+          const lockStatus = LoginRateLimiter.isLockedOut();
+          if (lockStatus.locked) {
+            this.showAlert(`Security Lockout Active: Too many failed login attempts. Please try again in ${lockStatus.remainingSec}s.`);
+            return;
           }
+
+          // 2. Input Extraction
+          const rawEmail = emailInput?.value || '';
+          const rawPassword = passInput?.value || '';
+
+          const email = escapeHTML(rawEmail.trim());
+          const password = rawPassword.trim();
+
+          if (!email || !password) {
+            this.showAlert('Please enter both email address and password.');
+            return;
+          }
+
+          // Match against demo accounts or cloud user
+          const matchedDemo = DEMO_ACCOUNTS.find(a => a.email.toLowerCase() === email.toLowerCase());
+          let role = matchedDemo ? matchedDemo.role : USER_ROLES.FIELD_INSPECTOR;
+          let fullName = matchedDemo ? matchedDemo.fullName : 'Authorized User';
+
+          if (!matchedDemo && email.includes('@')) {
+            const parts = email.split('@')[0].split('.');
+            fullName = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+          }
+
+          if (supabaseService.isConfigured()) {
+            try {
+              const { data, error } = await supabaseService.client.auth.signInWithPassword({
+                email: rawEmail,
+                password: rawPassword
+              });
+              if (error) {
+                console.warn('[Synx Auth Notice]', error.message);
+              } else if (data?.user) {
+                fullName = data.user.user_metadata?.full_name || fullName;
+                role = data.user.user_metadata?.role || role;
+              }
+            } catch (err) {
+              console.warn('[Synx Auth] Supabase auth notice:', err.message);
+            }
+          }
+
+          LoginRateLimiter.reset();
+          const userSession = {
+            id: matchedDemo ? matchedDemo.id : 'user-' + Date.now(),
+            email: email,
+            fullName: fullName,
+            role: role,
+            loggedInAt: new Date().toISOString()
+          };
+
+          localStorage.setItem('synx_auth_user', JSON.stringify(userSession));
+
+          // Determine target landing URL
+          const redirectParam = new URLSearchParams(window.location.search).get('redirect');
+          let targetUrl = redirectParam && isSafeRedirectUrl(redirectParam)
+            ? decodeURIComponent(redirectParam)
+            : AuthGuard.getDefaultLandingPage(userSession);
+
+          // SPA navigation fallback to avoid hard page reload 404s
+          if (window.history && typeof window.history.pushState === 'function') {
+            try {
+              const { Router } = await import('../router.js');
+              if (Router && typeof Router.navigate === 'function') {
+                Router.navigate(targetUrl);
+                return;
+              }
+            } catch (routerErr) {
+              console.warn('[Synx Router Fallback]', routerErr);
+            }
+          }
+
+          window.location.href = targetUrl;
+        } catch (loginErr) {
+          console.error('[Synx Auth Error]', loginErr);
+          this.showAlert(`Authentication system notice: ${loginErr?.message || 'Unable to process login. Please try again.'}`);
         }
-
-        LoginRateLimiter.reset();
-        const userSession = {
-          id: matchedDemo ? matchedDemo.id : 'user-' + Date.now(),
-          email: email,
-          fullName: fullName,
-          role: role,
-          loggedInAt: new Date().toISOString()
-        };
-
-        localStorage.setItem('synx_auth_user', JSON.stringify(userSession));
-
-        // Redirect to target or role-based default page
-        const redirectParam = new URLSearchParams(window.location.search).get('redirect');
-        const targetUrl = redirectParam && isSafeRedirectUrl(redirectParam)
-          ? decodeURIComponent(redirectParam)
-          : AuthGuard.getDefaultLandingPage(userSession);
-
-        window.location.href = targetUrl;
       });
     }
   }

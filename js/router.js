@@ -41,50 +41,74 @@ export class Router {
   }
 
   static handleRoute(pathname) {
-    const cleanPath = pathname.replace(/\/$/, '') || '/';
-    const user = AuthGuard.getSessionUser();
+    try {
+      const cleanPath = pathname.replace(/\/$/, '') || '/';
+      const user = AuthGuard.getSessionUser();
 
-    // 1. Unauthenticated Route Guard
-    if (!user && cleanPath !== '/login') {
-      window.history.replaceState({}, '', '/login');
-      this.renderLogin();
-      return;
-    }
-
-    if (cleanPath === '/login') {
-      if (user) {
-        const defaultPath = this.getDefaultPathForRole(user.role);
-        window.history.replaceState({}, '', defaultPath);
-        this.handleRoute(defaultPath);
-      } else {
+      // 1. Unauthenticated Route Guard
+      if (!user && cleanPath !== '/login') {
+        window.history.replaceState({}, '', '/login');
         this.renderLogin();
-      }
-      return;
-    }
-
-    // 2. Role-Based Route Protection
-    if (cleanPath.startsWith('/admin')) {
-      if (!AuthGuard.hasRole([USER_ROLES.ADMIN])) {
-        AppLayout.showToast('Unauthorized access to Admin Console. Redirected to Inspector Portal.');
-        this.navigate('/ocular');
         return;
       }
-      this.renderAdminWorkspace(cleanPath);
-      return;
-    }
 
-    if (cleanPath.startsWith('/manager')) {
-      if (!AuthGuard.hasRole([USER_ROLES.CUSTOMER_CARE_MANAGER, USER_ROLES.LEAD_ENGINEER, USER_ROLES.ADMIN])) {
-        AppLayout.showToast('Unauthorized access to Manager Workspace. Redirected to Inspector Portal.');
-        this.navigate('/ocular');
+      if (cleanPath === '/login') {
+        if (user) {
+          const defaultPath = this.getDefaultPathForRole(user.role);
+          window.history.replaceState({}, '', defaultPath);
+          this.handleRoute(defaultPath);
+        } else {
+          this.renderLogin();
+        }
         return;
       }
-      this.renderManagerWorkspace(cleanPath);
-      return;
-    }
 
-    // Default route: Inspector Workspace (/ocular, /ocular/ready, /ocular/installation, /ocular/history)
-    this.renderInspectorWorkspace(cleanPath);
+      // 2. Role-Based Route Protection
+      if (cleanPath.startsWith('/admin')) {
+        if (!AuthGuard.hasRole([USER_ROLES.ADMIN])) {
+          AppLayout.showToast('Unauthorized access to Admin Console. Redirected to Inspector Portal.');
+          this.navigate('/ocular');
+          return;
+        }
+        this.renderAdminWorkspace(cleanPath);
+        return;
+      }
+
+      if (cleanPath.startsWith('/manager')) {
+        if (!AuthGuard.hasRole([USER_ROLES.CUSTOMER_CARE_MANAGER, USER_ROLES.LEAD_ENGINEER, USER_ROLES.ADMIN])) {
+          AppLayout.showToast('Unauthorized access to Manager Workspace. Redirected to Inspector Portal.');
+          this.navigate('/ocular');
+          return;
+        }
+        this.renderManagerWorkspace(cleanPath);
+        return;
+      }
+
+      // Default route: Inspector Workspace (/ocular, /ocular/ready, /ocular/installation, /ocular/history)
+      this.renderInspectorWorkspace(cleanPath);
+    } catch (routeErr) {
+      console.error('[Synx Router Error]', routeErr);
+      this.renderError(routeErr);
+    }
+  }
+
+  static renderError(error) {
+    const appElem = document.getElementById('app');
+    if (appElem) {
+      appElem.innerHTML = `
+        <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; background: var(--bg-primary, #0B1120); color: #fff; text-align: center;">
+          <div style="max-width: 480px; width: 100%; padding: 2.25rem; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(244, 63, 94, 0.4); border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <div style="width: 56px; height: 56px; margin: 0 auto 1rem; background: rgba(244, 63, 94, 0.15); color: #F43F5E; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800;">!</div>
+            <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 0.5rem; color: #fff;">Application Navigation Notice</h2>
+            <p style="font-size: 0.875rem; color: #94A3B8; margin-bottom: 1.5rem;">${error?.message || 'A routing component notice occurred.'}</p>
+            <div style="display: flex; gap: 0.75rem; justify-content: center;">
+              <button onclick="window.location.href='/login'" style="padding: 0.6rem 1.2rem; background: #00AEEF; color: #fff; border: none; border-radius: 0.5rem; font-weight: 700; cursor: pointer;">Return to Login</button>
+              <button onclick="window.location.href='/'" style="padding: 0.6rem 1.2rem; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 0.5rem; font-weight: 700; cursor: pointer;">Reload Home</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
   }
 
   static getDefaultPathForRole(role) {
