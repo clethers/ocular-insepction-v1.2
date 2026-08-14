@@ -122,10 +122,17 @@ class UserService {
 
   getInitials(name) {
     if (!name) return 'US';
-    const parts = name.replace(/^(Engr\.|Dr\.|Mr\.|Ms\.|PE)\s*/i, '').trim().split(' ');
-    return parts.length > 1
-      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-      : parts[0].substring(0, 2).toUpperCase();
+    const cleanName = String(name).replace(/^(Engr\.|Dr\.|Mr\.|Ms\.|PE)\s*/i, '').trim();
+    const parts = cleanName.split(/\s+/).filter(Boolean);
+    if (parts.length > 1) {
+      const f = parts[0][0] || 'U';
+      const l = parts[parts.length - 1][0] || 'S';
+      return (f + l).toUpperCase();
+    }
+    if (parts.length === 1) {
+      return parts[0].substring(0, 2).toUpperCase();
+    }
+    return 'US';
   }
 }
 

@@ -331,8 +331,17 @@ export class AppLayout {
         if (parsed.email) user.email = parsed.email;
         if (parsed.role) user.role = parsed.role;
         if (user.fullName) {
-          const parts = user.fullName.replace(/^(Engr\.|Dr\.|Mr\.|Ms\.|PE)\s*/i, '').trim().split(' ');
-          user.initials = parts.length > 1 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : parts[0].substring(0, 2).toUpperCase();
+          const cleanName = String(user.fullName).replace(/^(Engr\.|Dr\.|Mr\.|Ms\.|PE)\s*/i, '').trim();
+          const parts = cleanName.split(/\s+/).filter(Boolean);
+          if (parts.length > 1) {
+            const f = (parts[0][0] || 'U');
+            const l = (parts[parts.length - 1][0] || 'S');
+            user.initials = (f + l).toUpperCase();
+          } else if (parts.length === 1) {
+            user.initials = parts[0].substring(0, 2).toUpperCase();
+          } else {
+            user.initials = 'US';
+          }
         }
       } catch (e) {}
     }

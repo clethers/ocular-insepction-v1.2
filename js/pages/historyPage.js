@@ -35,7 +35,7 @@ function renderHistoryView(container) {
           ${drafts.map(draft => `
             <div class="custom-option" style="flex-direction: column; align-items: flex-start; gap: 0.4rem;">
               <div style="display: flex; justify-content: space-between; width: 100%; font-weight: 700; color: var(--ecoworks-blue);">
-                <span>${draft.id.toUpperCase()}</span>
+                <span>${String(draft.id || 'DRAFT').toUpperCase()}</span>
                 <span style="font-size: 0.75rem; color: var(--text-muted);">${new Date(draft.updatedAt).toLocaleString()}</span>
               </div>
               <div style="font-size: 0.85rem; color: var(--text-primary);">

@@ -278,7 +278,7 @@ export class AdminWorkspace {
 
   // Generates interactive SVG trend chart for Day, Month, or Year analytics
   renderWhatsNextSvgChart() {
-    const tf = this.analyticsTimeframe;
+    const tf = (this.analyticsTimeframe || 'month').toString().toLowerCase();
     
     let labels = [];
     let bars = [];
@@ -360,7 +360,7 @@ export class AdminWorkspace {
 
   // Generates right panel forecast metrics based on timeframe selection
   renderWhatsNextForecastMetrics() {
-    const tf = this.analyticsTimeframe;
+    const tf = (this.analyticsTimeframe || 'month').toString().toLowerCase();
 
     let incoming = '28';
     let audits = '18';
