@@ -1,0 +1,322 @@
+-- ============================================================================
+-- Synx Portal — Supabase Production Database Schema & Security Migration
+-- EcoWorks Ocular Inspections, Manager Command Center & System Administration
+-- ============================================================================
+
+-- Enable UUID Extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ----------------------------------------------------------------------------
+-- 1. Profiles Table (Auth & User Management Integration)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    role VARCHAR(50) DEFAULT 'field_inspector',
+    department VARCHAR(255) DEFAULT 'Operations',
+    status VARCHAR(50) DEFAULT 'ACTIVE',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Ensure columns exist for backwards compatibility on existing tables
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS department VARCHAR(255) DEFAULT 'Operations';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'ACTIVE';
+
+-- Trigger to automatically create profile on signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.profiles (id, email, full_name, role, department, status)
+    VALUES (
+        NEW.id,
+        NEW.email,
+        COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
+        COALESCE(NEW.raw_user_meta_data->>'role', 'field_inspector'),
+        COALESCE(NEW.raw_user_meta_data->>'department', 'Operations'),
+        COALESCE(NEW.raw_user_meta_data->>'status', 'ACTIVE')
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        email = EXCLUDED.email,
+        full_name = EXCLUDED.full_name,
+        role = EXCLUDED.role,
+        department = EXCLUDED.department,
+        status = EXCLUDED.status;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger execution binding
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ----------------------------------------------------------------------------
+-- 2. Ocular Inspections Table
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.ocular_inspections (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    record_id VARCHAR(50) NOT NULL DEFAULT '#AUD-101',
+    client_name VARCHAR(255) NOT NULL,
+    date_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    time_start VARCHAR(50),
+    time_end VARCHAR(50),
+    rn_no VARCHAR(100) UNIQUE NOT NULL,
+    installation_no VARCHAR(100),
+    contact_no VARCHAR(100),
+    scope_of_works VARCHAR(100) DEFAULT 'Site Inspection',
+    location_address TEXT,
+    gps_lat NUMERIC(10, 7),
+    gps_lng NUMERIC(10, 7),
+    
+    -- Technical Feeder & Specs
+    voltage_system VARCHAR(50),
+    voltage_specify VARCHAR(100),
+    main_breaker VARCHAR(100),
+    no_branches INT DEFAULT 0,
+    spare_breaker VARCHAR(10) DEFAULT 'YES',
+    space_provision VARCHAR(10) DEFAULT 'YES',
+    breaker_brand VARCHAR(100),
+    breaker_mounting VARCHAR(50),
+    grounding_system VARCHAR(10) DEFAULT 'YES',
+    grounding_rod_location TEXT,
+    
+    -- EV Charger & Conduit Specs
+    charger_location TEXT,
+    estimate_distance VARCHAR(50),
+    pvc_qty INT DEFAULT 0,
+    emt_qty INT DEFAULT 0,
+    imc_qty INT DEFAULT 0,
+    liquid_tight_fittings VARCHAR(10) DEFAULT 'YES',
+    liquid_tight_qty INT DEFAULT 0,
+    lb_qty INT DEFAULT 0,
+    lr_qty INT DEFAULT 0,
+    ll_qty INT DEFAULT 0,
+    t_qty INT DEFAULT 0,
+    utility_box_qty INT DEFAULT 0,
+    square_box_qty INT DEFAULT 0,
+    octagon_box_qty INT DEFAULT 0,
+    junction_box_qty INT DEFAULT 0,
+    other_boxes_notes TEXT,
+    
+    -- Retrofittings & Remarks
+    retrofittings TEXT,
+    replacement TEXT,
+    new_installation TEXT,
+    
+    -- Signatures & Verification
+    inspected_by_name VARCHAR(255),
+    inspector_sig_img TEXT,
+    witnessed_by_name VARCHAR(255),
+    witness_sig_img TEXT,
+    
+    -- Photo Attachments (Proposed Layout, Tapping Point, Wiring/Conduit, EV Location)
+    photo_attachments JSONB DEFAULT '{}'::jsonb,
+
+    -- Record Pipeline Status
+    status VARCHAR(50) DEFAULT 'READY_FOR_INSTALLATION',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexing for fast search queries
+CREATE INDEX IF NOT EXISTS idx_ocular_rn_no ON public.ocular_inspections(rn_no);
+CREATE INDEX IF NOT EXISTS idx_ocular_status ON public.ocular_inspections(status);
+CREATE INDEX IF NOT EXISTS idx_ocular_client ON public.ocular_inspections(client_name);
+
+-- ----------------------------------------------------------------------------
+-- 3. Installation & Commissioning Records Table
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.installation_records (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    ocular_id UUID REFERENCES public.ocular_inspections(id) ON DELETE SET NULL,
+    rn_no VARCHAR(100) NOT NULL,
+    installation_no VARCHAR(100) NOT NULL,
+    client_name VARCHAR(255) NOT NULL,
+    scope_of_works VARCHAR(100) DEFAULT 'Installation',
+    date_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- Commissioning Checklist & Photos (JSONB)
+    commissioning_data JSONB DEFAULT '{}'::jsonb,
+    photo_attachments JSONB DEFAULT '{}'::jsonb,
+    
+    -- Handover Signatures
+    installer_name VARCHAR(255),
+    installer_sig_img TEXT,
+    client_rep_name VARCHAR(255),
+    client_rep_sig_img TEXT,
+    
+    status VARCHAR(50) DEFAULT 'COMMISSIONED',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_installation_rn_no ON public.installation_records(rn_no);
+CREATE INDEX IF NOT EXISTS idx_installation_status ON public.installation_records(status);
+
+-- ----------------------------------------------------------------------------
+-- 4. Equipment Master Data Catalog Table
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.master_data_catalog (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    category VARCHAR(50) NOT NULL, -- 'chargers', 'breakers', 'conduits', 'scopes'
+    item_key VARCHAR(100) UNIQUE NOT NULL,
+    item_name VARCHAR(255) NOT NULL,
+    details JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_master_data_category ON public.master_data_catalog(category);
+
+-- ----------------------------------------------------------------------------
+-- 5. Photo Attachments Table (Storage Integration)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.photo_attachments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    installation_id UUID REFERENCES public.installation_records(id) ON DELETE CASCADE,
+    photo_category VARCHAR(50) NOT NULL,
+    storage_path TEXT NOT NULL,
+    public_url TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ----------------------------------------------------------------------------
+-- 6. System & Security Audit Logs Table (Immutable Event Logging)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.system_audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    actor_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    actor_email VARCHAR(255) NOT NULL,
+    actor_role VARCHAR(50) NOT NULL,
+    category VARCHAR(50) NOT NULL, -- 'AUTHENTICATION', 'FORM_INSPECTION', 'MANAGER_APPROVAL', 'FIELD_DISPATCH', 'CUSTOMER_CARE', 'ADMIN_RBAC'
+    event_type VARCHAR(100) NOT NULL,
+    severity VARCHAR(20) DEFAULT 'INFO', -- 'INFO', 'WARNING', 'CRITICAL'
+    resource_type VARCHAR(100),
+    resource_id VARCHAR(100),
+    description TEXT NOT NULL,
+    changes_delta JSONB DEFAULT '{}'::jsonb,
+    ip_address VARCHAR(50),
+    user_agent TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_category ON public.system_audit_logs(category);
+CREATE INDEX IF NOT EXISTS idx_audit_actor ON public.system_audit_logs(actor_email);
+CREATE INDEX IF NOT EXISTS idx_audit_resource ON public.system_audit_logs(resource_id);
+CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON public.system_audit_logs(created_at DESC);
+
+-- ----------------------------------------------------------------------------
+-- 7. Enable Row Level Security (RLS) & Role Access Control (RBAC)
+-- ----------------------------------------------------------------------------
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ocular_inspections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.installation_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.master_data_catalog ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.photo_attachments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.system_audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- Helper function to fetch current authenticated user's role
+CREATE OR REPLACE FUNCTION public.get_user_role()
+RETURNS TEXT AS $$
+DECLARE
+    user_role TEXT;
+BEGIN
+    SELECT role INTO user_role FROM public.profiles WHERE id = auth.uid();
+    RETURN COALESCE(user_role, 'field_inspector');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Profiles Policies
+CREATE POLICY "Allow users read inspector profiles" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Allow users update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Allow admin manage all profiles" ON public.profiles FOR ALL USING (public.get_user_role() = 'admin');
+
+-- Ocular Inspections Policies
+CREATE POLICY "Allow read ocular inspections" ON public.ocular_inspections FOR SELECT USING (true);
+CREATE POLICY "Allow insert ocular inspections" ON public.ocular_inspections FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow update ocular inspections" ON public.ocular_inspections FOR UPDATE USING (true);
+CREATE POLICY "Allow delete ocular inspections for admin" ON public.ocular_inspections FOR DELETE USING (public.get_user_role() IN ('admin', 'lead_engineer'));
+
+-- Installation Records Policies
+CREATE POLICY "Allow read installation records" ON public.installation_records FOR SELECT USING (true);
+CREATE POLICY "Allow insert installation records" ON public.installation_records FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow update installation records" ON public.installation_records FOR UPDATE USING (true);
+CREATE POLICY "Allow delete installation records for admin" ON public.installation_records FOR DELETE USING (public.get_user_role() IN ('admin', 'lead_engineer'));
+
+-- Master Data Catalog Policies
+CREATE POLICY "Allow read master data catalog" ON public.master_data_catalog FOR SELECT USING (true);
+CREATE POLICY "Allow admin manage master data catalog" ON public.master_data_catalog FOR ALL USING (public.get_user_role() IN ('admin', 'lead_engineer'));
+
+-- Photo Attachments Policies
+CREATE POLICY "Allow read photo attachments" ON public.photo_attachments FOR SELECT USING (true);
+CREATE POLICY "Allow insert photo attachments" ON public.photo_attachments FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow update photo attachments" ON public.photo_attachments FOR UPDATE USING (true);
+
+-- System Audit Logs Policies
+CREATE POLICY "Allow read audit logs for authenticated users" ON public.system_audit_logs FOR SELECT USING (true);
+CREATE POLICY "Allow insert audit logs for all authenticated users" ON public.system_audit_logs FOR INSERT WITH CHECK (true);
+
+-- ----------------------------------------------------------------------------
+-- 8. Supabase Storage Bucket Security Policies (`inspection-photos`)
+-- ----------------------------------------------------------------------------
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('inspection-photos', 'inspection-photos', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Allow field tech upload inspection photos" ON storage.objects
+FOR INSERT WITH CHECK (bucket_id = 'inspection-photos');
+
+CREATE POLICY "Allow public read inspection photos" ON storage.objects
+FOR SELECT USING (bucket_id = 'inspection-photos');
+
+-- ----------------------------------------------------------------------------
+-- 9. Enable Supabase Realtime Publication
+-- ----------------------------------------------------------------------------
+ALTER PUBLICATION supabase_realtime ADD TABLE public.ocular_inspections;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.installation_records;
+
+-- ----------------------------------------------------------------------------
+-- 10. Audit Logging Triggers
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.log_ocular_inspection_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'UPDATE') THEN
+        INSERT INTO public.system_audit_logs (
+            actor_id,
+            actor_email,
+            actor_role,
+            category,
+            event_type,
+            severity,
+            resource_type,
+            resource_id,
+            description,
+            changes_delta
+        ) VALUES (
+            auth.uid(),
+            COALESCE(auth.jwt()->>'email', 'system@ecoworks.ph'),
+            public.get_user_role(),
+            'FORM_INSPECTION',
+            'OCULAR_RECORD_UPDATED',
+            'INFO',
+            'ocular_inspections',
+            NEW.rn_no,
+            'Ocular inspection record ' || NEW.rn_no || ' updated status to ' || NEW.status,
+            jsonb_build_object(
+                'old_status', OLD.status,
+                'new_status', NEW.status,
+                'client_name', NEW.client_name
+            )
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trigger_ocular_audit_log ON public.ocular_inspections;
+CREATE TRIGGER trigger_ocular_audit_log
+    AFTER UPDATE ON public.ocular_inspections
+    FOR EACH ROW EXECUTE FUNCTION public.log_ocular_inspection_changes();

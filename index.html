@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Synx — Electrical Infrastructure & EV Operations Portal | EcoWorks</title>
+  <meta name="description" content="Field inspection form application for EcoWorks electrical and EV charger infrastructure ocular audits, manager dispatches, and admin console." />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval';" />
+  <link rel="icon" type="image/png" href="./assets/ecoworks-logo.png" />
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="./css/main.css" />
+  <link rel="stylesheet" href="./css/forms.css" />
+  <link rel="stylesheet" href="./css/print.css" />
+  
+  <!-- Interactive Map Library (Leaflet) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- Entry Script -->
+  <script type="module">
+    import { Router } from './js/router.js';
+    document.addEventListener('DOMContentLoaded', () => {
+      Router.init();
+    });
+  </script>
+</body>
+</html>
