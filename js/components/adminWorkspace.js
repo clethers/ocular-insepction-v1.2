@@ -232,25 +232,25 @@ export class AdminWorkspace {
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
             <div>
               <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <span class="badge" style="background: rgba(0, 174, 239, 0.15); color: var(--ecoworks-blue); font-size: 0.725rem; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: var(--radius-full); text-transform: uppercase;">
+                <span class="badge" style="background: rgba(0, 174, 239, 0.15); color: var(--ecoworks-blue); font-size: 0.725rem; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: var(--radius-full); text-transform: uppercase; letter-spacing: 0.05em;">
                   What's Next Analytics
                 </span>
                 <h3 style="font-weight: 800; font-size: 1.15rem; color: var(--text-primary); margin: 0;">Leads Conversion & Pipeline Velocity</h3>
               </div>
-              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">
+              <p style="font-size: 0.825rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">
                 Track incoming client leads, field audit throughput, and upcoming installation completion trajectory.
               </p>
             </div>
 
             <!-- Timeframe Filter Toggles: Day, Month, Year -->
-            <div style="display: flex; background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 0.25rem; gap: 0.25rem;" id="whatsnext-timeframe-group">
-              <button type="button" class="btn btn-analytics-tf ${this.analyticsTimeframe === 'day' ? 'active' : ''}" data-tf="day" style="padding: 0.35rem 0.85rem; font-size: 0.775rem; font-weight: 700; border-radius: var(--radius-md); ${this.analyticsTimeframe === 'day' ? 'background: var(--ecoworks-blue); color: #fff;' : 'background: transparent; color: var(--text-muted);'} border: none; cursor: pointer; transition: all 0.2s;">
+            <div style="display: flex; background: rgba(11, 25, 44, 0.8); border: 1px solid rgba(0, 174, 239, 0.3); border-radius: var(--radius-lg); padding: 0.3rem; gap: 0.3rem;" id="whatsnext-timeframe-group">
+              <button type="button" class="btn btn-analytics-tf ${this.analyticsTimeframe === 'day' ? 'active' : ''}" data-tf="day" style="padding: 0.4rem 0.95rem; font-size: 0.775rem; font-weight: 800; border-radius: var(--radius-md); ${this.analyticsTimeframe === 'day' ? 'background: linear-gradient(135deg, #00AEEF 0%, #0077B6 100%); color: #ffffff; box-shadow: 0 4px 12px rgba(0, 174, 239, 0.4);' : 'background: transparent; color: #94A3B8;'} border: none; cursor: pointer; transition: all 0.2s;">
                 Day (24h)
               </button>
-              <button type="button" class="btn btn-analytics-tf ${this.analyticsTimeframe === 'month' ? 'active' : ''}" data-tf="month" style="padding: 0.35rem 0.85rem; font-size: 0.775rem; font-weight: 700; border-radius: var(--radius-md); ${this.analyticsTimeframe === 'month' ? 'background: var(--ecoworks-blue); color: #fff;' : 'background: transparent; color: var(--text-muted);'} border: none; cursor: pointer; transition: all 0.2s;">
+              <button type="button" class="btn btn-analytics-tf ${this.analyticsTimeframe === 'month' ? 'active' : ''}" data-tf="month" style="padding: 0.4rem 0.95rem; font-size: 0.775rem; font-weight: 800; border-radius: var(--radius-md); ${this.analyticsTimeframe === 'month' ? 'background: linear-gradient(135deg, #00AEEF 0%, #0077B6 100%); color: #ffffff; box-shadow: 0 4px 12px rgba(0, 174, 239, 0.4);' : 'background: transparent; color: #94A3B8;'} border: none; cursor: pointer; transition: all 0.2s;">
                 Month (30d)
               </button>
-              <button type="button" class="btn btn-analytics-tf ${this.analyticsTimeframe === 'year' ? 'active' : ''}" data-tf="year" style="padding: 0.35rem 0.85rem; font-size: 0.775rem; font-weight: 700; border-radius: var(--radius-md); ${this.analyticsTimeframe === 'year' ? 'background: var(--ecoworks-blue); color: #fff;' : 'background: transparent; color: var(--text-muted);'} border: none; cursor: pointer; transition: all 0.2s;">
+              <button type="button" class="btn btn-analytics-tf ${this.analyticsTimeframe === 'year' ? 'active' : ''}" data-tf="year" style="padding: 0.4rem 0.95rem; font-size: 0.775rem; font-weight: 800; border-radius: var(--radius-md); ${this.analyticsTimeframe === 'year' ? 'background: linear-gradient(135deg, #00AEEF 0%, #0077B6 100%); color: #ffffff; box-shadow: 0 4px 12px rgba(0, 174, 239, 0.4);' : 'background: transparent; color: #94A3B8;'} border: none; cursor: pointer; transition: all 0.2s;">
                 Year (12m)
               </button>
             </div>
@@ -259,13 +259,13 @@ export class AdminWorkspace {
           <!-- Chart & Forecast Grid -->
           <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; align-items: stretch;" class="whats-next-grid">
             
-            <!-- SVG Analytics Visual Chart -->
-            <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between;">
+            <!-- Visual Chart Box (Vibrant Deep Blue Card) -->
+            <div style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border: 1px solid rgba(0, 174, 239, 0.35); border-radius: var(--radius-lg); padding: 1.35rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.3);">
               ${this.renderWhatsNextSvgChart()}
             </div>
 
             <!-- Pipeline Breakdown Metrics Panel -->
-            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; flex-direction: column; gap: 0.85rem;">
               ${this.renderWhatsNextForecastMetrics()}
             </div>
 
@@ -290,23 +290,23 @@ export class AdminWorkspace {
       subtitle = 'Peak intake hours: 09:00 - 14:00 • 28 New Leads Ingested Today';
       labels = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'];
       bars = [
-        { label: '00:00', val: 2, height: 15, color: 'var(--ecoworks-blue)' },
-        { label: '04:00', val: 1, height: 10, color: 'var(--ecoworks-blue)' },
-        { label: '08:00', val: 6, height: 50, color: '#10B981' },
-        { label: '12:00', val: 10, height: 85, color: '#10B981' },
-        { label: '16:00', val: 7, height: 60, color: 'var(--ecoworks-blue)' },
-        { label: '20:00', val: 2, height: 20, color: 'var(--ecoworks-blue)' },
-        { label: '23:59', val: 0, height: 5, color: 'var(--text-muted)' }
+        { label: '00:00', val: 2, height: 18, color: '#38BDF8' },
+        { label: '04:00', val: 1, height: 12, color: '#38BDF8' },
+        { label: '08:00', val: 6, height: 55, color: '#34D399' },
+        { label: '12:00', val: 10, height: 90, color: '#34D399' },
+        { label: '16:00', val: 7, height: 65, color: '#38BDF8' },
+        { label: '20:00', val: 2, height: 22, color: '#38BDF8' },
+        { label: '23:59', val: 0, height: 6, color: '#64748B' }
       ];
     } else if (tf === 'year') {
       title = '12-Month Annual Lead Trajectory & Forecast';
       subtitle = 'Annual Cumulative Leads: 1,462 • +24.8% YoY Growth Rate';
       labels = ['Q1 (Jan-Mar)', 'Q2 (Apr-Jun)', 'Q3 (Jul-Sep)', 'Q4 (Oct-Dec)'];
       bars = [
-        { label: 'Q1', val: 310, height: 45, color: 'var(--ecoworks-blue)' },
-        { label: 'Q2', val: 380, height: 65, color: 'var(--ecoworks-blue)' },
-        { label: 'Q3', val: 420, height: 78, color: '#10B981' },
-        { label: 'Q4 (Proj)', val: 352, height: 60, color: '#F59E0B' }
+        { label: 'Q1', val: 310, height: 50, color: '#38BDF8' },
+        { label: 'Q2', val: 380, height: 70, color: '#38BDF8' },
+        { label: 'Q3', val: 420, height: 85, color: '#34D399' },
+        { label: 'Q4 (Proj)', val: 352, height: 65, color: '#FBBF24' }
       ];
     } else {
       // Default: Month (30d)
@@ -314,44 +314,44 @@ export class AdminWorkspace {
       subtitle = 'Current Month Total: 340 Leads • 210 Ocular Audits Completed';
       labels = ['W1 (1-7)', 'W2 (8-14)', 'W3 (15-21)', 'W4 (22-30)'];
       bars = [
-        { label: 'Week 1', val: 75, height: 50, color: 'var(--ecoworks-blue)' },
-        { label: 'Week 2', val: 92, height: 75, color: 'var(--ecoworks-blue)' },
-        { label: 'Week 3', val: 110, height: 90, color: '#10B981' },
-        { label: 'Week 4', val: 63, height: 45, color: '#F59E0B' }
+        { label: 'Week 1', val: 75, height: 55, color: '#38BDF8' },
+        { label: 'Week 2', val: 92, height: 80, color: '#38BDF8' },
+        { label: 'Week 3', val: 110, height: 95, color: '#34D399' },
+        { label: 'Week 4', val: 63, height: 50, color: '#FBBF24' }
       ];
     }
 
     return `
       <div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
           <div>
-            <strong style="color: var(--text-primary); font-size: 0.9rem; font-weight: 700;">${title}</strong>
-            <span style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${subtitle}</span>
+            <strong style="color: #F8FAFC; font-size: 0.95rem; font-weight: 800; letter-spacing: -0.01em;">${title}</strong>
+            <span style="display: block; font-size: 0.775rem; color: #94A3B8; margin-top: 0.2rem; font-weight: 500;">${subtitle}</span>
           </div>
-          <div style="display: flex; gap: 0.75rem; font-size: 0.725rem; font-weight: 700;">
-            <span style="color: #10B981; display: flex; align-items: center; gap: 0.35rem;">
-              <span style="width: 8px; height: 8px; border-radius: 50%; background: #10B981; display: inline-block;"></span>
+          <div style="display: flex; gap: 0.85rem; font-size: 0.75rem; font-weight: 700;">
+            <span style="color: #34D399; display: flex; align-items: center; gap: 0.4rem; background: rgba(52, 211, 153, 0.12); padding: 0.2rem 0.55rem; border-radius: var(--radius-full);">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #34D399; display: inline-block;"></span>
               Converted
             </span>
-            <span style="color: var(--ecoworks-blue); display: flex; align-items: center; gap: 0.35rem;">
-              <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--ecoworks-blue); display: inline-block;"></span>
+            <span style="color: #38BDF8; display: flex; align-items: center; gap: 0.4rem; background: rgba(56, 189, 248, 0.12); padding: 0.2rem 0.55rem; border-radius: var(--radius-full);">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #38BDF8; display: inline-block;"></span>
               In Progress
             </span>
           </div>
         </div>
 
         <!-- SVG Visual Chart Bars -->
-        <div style="height: 160px; width: 100%; display: flex; align-items: flex-end; justify-content: space-around; padding-top: 1rem; border-bottom: 1px dashed var(--border-color); gap: 0.75rem;">
+        <div style="height: 165px; width: 100%; display: flex; align-items: flex-end; justify-content: space-around; padding-top: 1rem; border-bottom: 1px dashed rgba(255, 255, 255, 0.12); gap: 0.85rem;">
           ${bars.map(b => `
             <div style="display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; flex: 1;">
-              <span style="font-size: 0.7rem; font-weight: 800; color: ${b.color}; margin-bottom: 0.35rem;">${b.val}</span>
-              <div style="width: 100%; max-width: 44px; height: ${b.height}%; background: ${b.color}; border-radius: 6px 6px 0 0; opacity: 0.9; transition: height 0.4s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2);"></div>
+              <span style="font-size: 0.725rem; font-weight: 800; color: ${b.color}; margin-bottom: 0.4rem;">${b.val}</span>
+              <div style="width: 100%; max-width: 46px; height: ${b.height}%; background: ${b.color}; border-radius: 6px 6px 0 0; opacity: 0.95; transition: height 0.4s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.3);"></div>
             </div>
           `).join('')}
         </div>
 
         <!-- Axis Labels -->
-        <div style="display: flex; justify-content: space-around; font-size: 0.725rem; color: var(--text-muted); margin-top: 0.6rem; font-weight: 600;">
+        <div style="display: flex; justify-content: space-around; font-size: 0.75rem; color: #CBD5E1; margin-top: 0.7rem; font-weight: 700;">
           ${labels.map(l => `<span>${l}</span>`).join('')}
         </div>
       </div>
@@ -380,34 +380,34 @@ export class AdminWorkspace {
     }
 
     return `
-      <!-- Card A: Incoming Leads -->
-      <div style="padding: 0.85rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-lg);">
+      <!-- Card A: Incoming Leads (Vibrant Electric Blue Gradient Card) -->
+      <div style="padding: 0.95rem 1.15rem; background: linear-gradient(135deg, rgba(0, 174, 239, 0.15) 0%, rgba(15, 23, 42, 0.85) 100%); border: 1px solid rgba(0, 174, 239, 0.4); border-radius: var(--radius-lg); box-shadow: 0 4px 16px rgba(0, 174, 239, 0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Incoming New Leads</span>
-          <span class="badge" style="background: rgba(0, 174, 239, 0.15); color: var(--ecoworks-blue); font-size: 0.7rem; font-weight: 700;">${tf.toUpperCase()}</span>
+          <span style="font-size: 0.75rem; font-weight: 800; color: #CBD5E1; text-transform: uppercase; letter-spacing: 0.05em;">Incoming New Leads</span>
+          <span class="badge" style="background: rgba(0, 174, 239, 0.25); color: #38BDF8; font-size: 0.7rem; font-weight: 800; padding: 0.2rem 0.55rem; border-radius: var(--radius-full);">${tf.toUpperCase()}</span>
         </div>
-        <div style="font-size: 1.5rem; font-weight: 800; color: var(--ecoworks-blue); margin-top: 0.15rem;">${incoming}</div>
-        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;">Residential & Commercial Leads Ingested</div>
+        <div style="font-size: 1.65rem; font-weight: 800; color: #38BDF8; margin-top: 0.2rem; letter-spacing: -0.02em;">${incoming}</div>
+        <div style="font-size: 0.725rem; color: #94A3B8; margin-top: 0.15rem; font-weight: 500;">Residential & Commercial Leads Ingested</div>
       </div>
 
-      <!-- Card B: Scheduled Audits -->
-      <div style="padding: 0.85rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-lg);">
+      <!-- Card B: Scheduled Audits (Vibrant Gold Amber Gradient Card) -->
+      <div style="padding: 0.95rem 1.15rem; background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(15, 23, 42, 0.85) 100%); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: var(--radius-lg); box-shadow: 0 4px 16px rgba(245, 158, 11, 0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Scheduled Ocular Audits</span>
-          <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B; font-size: 0.7rem; font-weight: 700;">PIPELINE</span>
+          <span style="font-size: 0.75rem; font-weight: 800; color: #CBD5E1; text-transform: uppercase; letter-spacing: 0.05em;">Scheduled Ocular Audits</span>
+          <span class="badge" style="background: rgba(245, 158, 11, 0.25); color: #FBBF24; font-size: 0.7rem; font-weight: 800; padding: 0.2rem 0.55rem; border-radius: var(--radius-full);">PIPELINE</span>
         </div>
-        <div style="font-size: 1.5rem; font-weight: 800; color: #F59E0B; margin-top: 0.15rem;">${audits}</div>
-        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;">Dispatched & Conducted Audits</div>
+        <div style="font-size: 1.65rem; font-weight: 800; color: #FBBF24; margin-top: 0.2rem; letter-spacing: -0.02em;">${audits}</div>
+        <div style="font-size: 0.725rem; color: #94A3B8; margin-top: 0.15rem; font-weight: 500;">Dispatched & Conducted Audits</div>
       </div>
 
-      <!-- Card C: Commissioning Handovers -->
-      <div style="padding: 0.85rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-lg);">
+      <!-- Card C: Commissioning Handovers (Vibrant Emerald Gradient Card) -->
+      <div style="padding: 0.95rem 1.15rem; background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(15, 23, 42, 0.85) 100%); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: var(--radius-lg); box-shadow: 0 4px 16px rgba(16, 185, 129, 0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Commissioned Handovers</span>
-          <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-size: 0.7rem; font-weight: 700;">PASSED</span>
+          <span style="font-size: 0.75rem; font-weight: 800; color: #CBD5E1; text-transform: uppercase; letter-spacing: 0.05em;">Commissioned Handovers</span>
+          <span class="badge" style="background: rgba(16, 185, 129, 0.25); color: #34D399; font-size: 0.7rem; font-weight: 800; padding: 0.2rem 0.55rem; border-radius: var(--radius-full);">PASSED</span>
         </div>
-        <div style="font-size: 1.5rem; font-weight: 800; color: #10B981; margin-top: 0.15rem;">${handovers}</div>
-        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;">${targetMsg}</div>
+        <div style="font-size: 1.65rem; font-weight: 800; color: #34D399; margin-top: 0.2rem; letter-spacing: -0.02em;">${handovers}</div>
+        <div style="font-size: 0.725rem; color: #94A3B8; margin-top: 0.15rem; font-weight: 500;">${targetMsg}</div>
       </div>
     `;
   }
