@@ -166,7 +166,9 @@ export class AdminWorkspace {
         </div>
       </div>
     `;
-  }  // TAB 3: System Health & Inspector Output Analytics Dashboard
+  }
+
+  // TAB: System Health & Inspector Output Analytics Dashboard
   renderDashboardTab() {
     return `
       <div style="display: flex; flex-direction: column; gap: 1.5rem;">
@@ -225,6 +227,187 @@ export class AdminWorkspace {
 
         </div>
 
+        <!-- "What's Next" Analytics & Lead Conversion Velocity Chart -->
+        <div class="form-card" style="padding: 1.5rem; background: var(--bg-card); border-radius: var(--radius-xl); border: 1px solid var(--border-color);">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="badge" style="background: rgba(0, 174, 239, 0.15); color: var(--ecoworks-blue); font-size: 0.725rem; font-weight: 800; padding: 0.25rem 0.6rem; border-radius: var(--radius-full); text-transform: uppercase;">
+                  What's Next Analytics
+                </span>
+                <h3 style="font-weight: 800; font-size: 1.15rem; color: var(--text-primary); margin: 0;">Leads Conversion & Pipeline Velocity</h3>
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">
+                Track incoming client leads, field audit throughput, and upcoming installation completion trajectory.
+              </p>
+            </div>
+
+            <!-- Timeframe Filter Toggles: Day, Month, Year -->
+            <div style="display: flex; background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 0.25rem; gap: 0.25rem;" id="whatsnext-timeframe-group">
+              <button type="button" class="btn btn-analytics-tf ${this.analyticsTimeframe === 'day' ? 'active' : ''}" data-tf="day" style="padding: 0.35rem 0.85rem; font-size: 0.775rem; font-weight: 700; border-radius: var(--radius-md); ${this.analyticsTimeframe === 'day' ? 'background: var(--ecoworks-blue); color: #fff;' : 'background: transparent; color: var(--text-muted);'} border: none; cursor: pointer; transition: all 0.2s;">
+                Day (24h)
+              </button>
+              <button type="button" class="btn btn-analytics-tf ${this.analyticsTimeframe === 'month' ? 'active' : ''}" data-tf="month" style="padding: 0.35rem 0.85rem; font-size: 0.775rem; font-weight: 700; border-radius: var(--radius-md); ${this.analyticsTimeframe === 'month' ? 'background: var(--ecoworks-blue); color: #fff;' : 'background: transparent; color: var(--text-muted);'} border: none; cursor: pointer; transition: all 0.2s;">
+                Month (30d)
+              </button>
+              <button type="button" class="btn btn-analytics-tf ${this.analyticsTimeframe === 'year' ? 'active' : ''}" data-tf="year" style="padding: 0.35rem 0.85rem; font-size: 0.775rem; font-weight: 700; border-radius: var(--radius-md); ${this.analyticsTimeframe === 'year' ? 'background: var(--ecoworks-blue); color: #fff;' : 'background: transparent; color: var(--text-muted);'} border: none; cursor: pointer; transition: all 0.2s;">
+                Year (12m)
+              </button>
+            </div>
+          </div>
+
+          <!-- Chart & Forecast Grid -->
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; align-items: stretch;" class="whats-next-grid">
+            
+            <!-- SVG Analytics Visual Chart -->
+            <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between;">
+              ${this.renderWhatsNextSvgChart()}
+            </div>
+
+            <!-- Pipeline Breakdown Metrics Panel -->
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+              ${this.renderWhatsNextForecastMetrics()}
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    `;
+  }
+
+  // Generates interactive SVG trend chart for Day, Month, or Year analytics
+  renderWhatsNextSvgChart() {
+    const tf = this.analyticsTimeframe;
+    
+    let labels = [];
+    let bars = [];
+    let title = '';
+    let subtitle = '';
+
+    if (tf === 'day') {
+      title = '24-Hour Lead Intake & Inspection Velocity';
+      subtitle = 'Peak intake hours: 09:00 - 14:00 • 28 New Leads Ingested Today';
+      labels = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'];
+      bars = [
+        { label: '00:00', val: 2, height: 15, color: 'var(--ecoworks-blue)' },
+        { label: '04:00', val: 1, height: 10, color: 'var(--ecoworks-blue)' },
+        { label: '08:00', val: 6, height: 50, color: '#10B981' },
+        { label: '12:00', val: 10, height: 85, color: '#10B981' },
+        { label: '16:00', val: 7, height: 60, color: 'var(--ecoworks-blue)' },
+        { label: '20:00', val: 2, height: 20, color: 'var(--ecoworks-blue)' },
+        { label: '23:59', val: 0, height: 5, color: 'var(--text-muted)' }
+      ];
+    } else if (tf === 'year') {
+      title = '12-Month Annual Lead Trajectory & Forecast';
+      subtitle = 'Annual Cumulative Leads: 1,462 • +24.8% YoY Growth Rate';
+      labels = ['Q1 (Jan-Mar)', 'Q2 (Apr-Jun)', 'Q3 (Jul-Sep)', 'Q4 (Oct-Dec)'];
+      bars = [
+        { label: 'Q1', val: 310, height: 45, color: 'var(--ecoworks-blue)' },
+        { label: 'Q2', val: 380, height: 65, color: 'var(--ecoworks-blue)' },
+        { label: 'Q3', val: 420, height: 78, color: '#10B981' },
+        { label: 'Q4 (Proj)', val: 352, height: 60, color: '#F59E0B' }
+      ];
+    } else {
+      // Default: Month (30d)
+      title = '30-Day Lead Conversion & Pipeline Velocity';
+      subtitle = 'Current Month Total: 340 Leads • 210 Ocular Audits Completed';
+      labels = ['W1 (1-7)', 'W2 (8-14)', 'W3 (15-21)', 'W4 (22-30)'];
+      bars = [
+        { label: 'Week 1', val: 75, height: 50, color: 'var(--ecoworks-blue)' },
+        { label: 'Week 2', val: 92, height: 75, color: 'var(--ecoworks-blue)' },
+        { label: 'Week 3', val: 110, height: 90, color: '#10B981' },
+        { label: 'Week 4', val: 63, height: 45, color: '#F59E0B' }
+      ];
+    }
+
+    return `
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <div>
+            <strong style="color: var(--text-primary); font-size: 0.9rem; font-weight: 700;">${title}</strong>
+            <span style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">${subtitle}</span>
+          </div>
+          <div style="display: flex; gap: 0.75rem; font-size: 0.725rem; font-weight: 700;">
+            <span style="color: #10B981; display: flex; align-items: center; gap: 0.35rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #10B981; display: inline-block;"></span>
+              Converted
+            </span>
+            <span style="color: var(--ecoworks-blue); display: flex; align-items: center; gap: 0.35rem;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--ecoworks-blue); display: inline-block;"></span>
+              In Progress
+            </span>
+          </div>
+        </div>
+
+        <!-- SVG Visual Chart Bars -->
+        <div style="height: 160px; width: 100%; display: flex; align-items: flex-end; justify-content: space-around; padding-top: 1rem; border-bottom: 1px dashed var(--border-color); gap: 0.75rem;">
+          ${bars.map(b => `
+            <div style="display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; flex: 1;">
+              <span style="font-size: 0.7rem; font-weight: 800; color: ${b.color}; margin-bottom: 0.35rem;">${b.val}</span>
+              <div style="width: 100%; max-width: 44px; height: ${b.height}%; background: ${b.color}; border-radius: 6px 6px 0 0; opacity: 0.9; transition: height 0.4s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2);"></div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Axis Labels -->
+        <div style="display: flex; justify-content: space-around; font-size: 0.725rem; color: var(--text-muted); margin-top: 0.6rem; font-weight: 600;">
+          ${labels.map(l => `<span>${l}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Generates right panel forecast metrics based on timeframe selection
+  renderWhatsNextForecastMetrics() {
+    const tf = this.analyticsTimeframe;
+
+    let incoming = '28';
+    let audits = '18';
+    let handovers = '12';
+    let targetMsg = 'Target: >15 Dispatches / day';
+
+    if (tf === 'month') {
+      incoming = '340';
+      audits = '210';
+      handovers = '145';
+      targetMsg = 'Target: >120 Handovers / mo';
+    } else if (tf === 'year') {
+      incoming = '1,462';
+      audits = '890';
+      handovers = '580';
+      targetMsg = 'Target: >500 Installs / yr';
+    }
+
+    return `
+      <!-- Card A: Incoming Leads -->
+      <div style="padding: 0.85rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-lg);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Incoming New Leads</span>
+          <span class="badge" style="background: rgba(0, 174, 239, 0.15); color: var(--ecoworks-blue); font-size: 0.7rem; font-weight: 700;">${tf.toUpperCase()}</span>
+        </div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: var(--ecoworks-blue); margin-top: 0.15rem;">${incoming}</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;">Residential & Commercial Leads Ingested</div>
+      </div>
+
+      <!-- Card B: Scheduled Audits -->
+      <div style="padding: 0.85rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-lg);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Scheduled Ocular Audits</span>
+          <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B; font-size: 0.7rem; font-weight: 700;">PIPELINE</span>
+        </div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: #F59E0B; margin-top: 0.15rem;">${audits}</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;">Dispatched & Conducted Audits</div>
+      </div>
+
+      <!-- Card C: Commissioning Handovers -->
+      <div style="padding: 0.85rem 1rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-lg);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Commissioned Handovers</span>
+          <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-size: 0.7rem; font-weight: 700;">PASSED</span>
+        </div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: #10B981; margin-top: 0.15rem;">${handovers}</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;">${targetMsg}</div>
       </div>
     `;
   }
@@ -295,6 +478,19 @@ export class AdminWorkspace {
   }
 
   bindEvents() {
+    // Analytics Timeframe Buttons (Day, Month, Year)
+    const analyticsTfBtns = this.container.querySelectorAll('.btn-analytics-tf');
+    analyticsTfBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tf = btn.getAttribute('data-tf');
+        if (tf && this.analyticsTimeframe !== tf) {
+          this.analyticsTimeframe = tf;
+          this.render();
+          AppLayout.showToast(`Updated analytics view to ${tf.toUpperCase()}`);
+        }
+      });
+    });
+
     // Tab Switching Buttons
     const tabBtns = this.container.querySelectorAll('.admin-tab-btn');
     tabBtns.forEach(btn => {
