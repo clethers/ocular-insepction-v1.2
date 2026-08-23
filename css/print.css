@@ -22,25 +22,49 @@
     padding: 0 !important;
   }
 
-  /* Hide ALL Non-Print UI Components, Web Forms, and App Cards */
+  /* Hide ALL Non-Print UI Components, Web Forms, Buttons, and App Cards */
   .app-sidebar,
   .top-view-header,
   .toast-container,
   .no-print,
   .btn,
+  button,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  .sidebar-nav-btn,
+  .sidebar-toggle-btn,
+  .qty-btn,
+  .btn-start-install,
+  .btn-reupload-photo,
+  .btn-remove-photo,
   .demo-preset-bar,
   .wizard-progress-bar,
   .wizard-footer,
   .signature-controls,
   form,
   .form-card,
-  .view-stage > form,
-  .view-stage > .form-card,
-  .view-stage > div:not(.print-document) {
+  .ready-pipeline-container,
+  .ready-search-form-card,
+  .ready-cards-grid {
     display: none !important;
   }
 
-  .app-layout, .app-main-content, .view-stage {
+  .print-document button,
+  .print-document .btn,
+  #print-sheet-container button,
+  #print-sheet-container .btn {
+    display: none !important;
+  }
+
+  /* Ensure Workspace Wrapper & Stage Containers Remain Visible for Print Document Rendering */
+  .app-layout, 
+  .app-main-content, 
+  .view-stage,
+  .inspector-workspace-wrapper,
+  #inspector-tab-stage,
+  .main-layout {
+    display: block !important;
     padding: 0 !important;
     margin: 0 !important;
     width: 100% !important;

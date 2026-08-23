@@ -22,17 +22,6 @@ export class OcularForm {
 
   render() {
     this.container.innerHTML = `
-      <!-- Presets Banner -->
-      <div class="demo-preset-bar no-print">
-        <div class="demo-preset-text">
-          <strong>Field Preset Available:</strong> Load sample form data for <strong>Esperanza Bacolod (RN128091526)</strong>.
-        </div>
-        <button class="btn btn-gold" id="btn-load-sample">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Load Sample Data
-        </button>
-      </div>
-
       <!-- Step Wizard Navigation Header -->
       <div class="wizard-progress-bar no-print">
         <div class="wizard-step active" data-step="1">
@@ -1017,15 +1006,21 @@ export class OcularForm {
   }
 
   initEvents() {
-    // 1-Click Preset Sample Data Loader
-    document.getElementById('btn-load-sample').addEventListener('click', () => {
-      this.populateSampleData();
-    });
+    // Preset Sample Data Loader (if present)
+    const loadSampleBtn = document.getElementById('btn-load-sample');
+    if (loadSampleBtn) {
+      loadSampleBtn.addEventListener('click', () => {
+        this.populateSampleData();
+      });
+    }
 
     // Save Draft
-    document.getElementById('btn-save-draft').addEventListener('click', () => {
-      this.saveFormDraft();
-    });
+    const saveDraftBtn = document.getElementById('btn-save-draft');
+    if (saveDraftBtn) {
+      saveDraftBtn.addEventListener('click', () => {
+        this.saveFormDraft();
+      });
+    }
 
     // Mark Ready for Installation
     const readyBtn = document.getElementById('btn-mark-ready');
@@ -1051,29 +1046,32 @@ export class OcularForm {
     }
 
     // Print / Export
-    document.getElementById('btn-print-preview').addEventListener('click', () => {
-      // Auto-update Time End before export if empty
-      const timeEndElem = document.getElementById('timeEnd');
-      if (timeEndElem && (!timeEndElem.value || timeEndElem.value.trim() === '')) {
-        const now = new Date();
-        timeEndElem.value = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-      }
+    const printPreviewBtn = document.getElementById('btn-print-preview');
+    if (printPreviewBtn) {
+      printPreviewBtn.addEventListener('click', () => {
+        // Auto-update Time End before export if empty
+        const timeEndElem = document.getElementById('timeEnd');
+        if (timeEndElem && (!timeEndElem.value || timeEndElem.value.trim() === '')) {
+          const now = new Date();
+          timeEndElem.value = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        }
 
-      this.generatePrintableDocument();
-      const data = this.getFormData();
-      const originalTitle = document.title;
-      const rnNo = (data.rnNo || '101').replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const clientName = (data.clientName || 'Client').replace(/[^a-zA-Z0-9_\-]/g, '_');
+        this.generatePrintableDocument();
+        const data = this.getFormData();
+        const originalTitle = document.title;
+        const rnNo = (data.rnNo || '101').replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const clientName = (data.clientName || 'Client').replace(/[^a-zA-Z0-9_\-]/g, '_');
 
-      // Set document title to controlled tracking number for default PDF file name
-      document.title = `ECO-SYN-AUD-${rnNo}_${clientName}`;
+        // Set document title to controlled tracking number for default PDF file name
+        document.title = `ECO-SYN-AUD-${rnNo}_${clientName}`;
 
-      window.print();
+        window.print();
 
-      setTimeout(() => {
-        document.title = originalTitle;
-      }, 1000);
-    });
+        setTimeout(() => {
+          document.title = originalTitle;
+        }, 1000);
+      });
+    }
 
     // Toggle voltage specify group
     const voltageRadios = document.querySelectorAll('input[name="voltageSystem"]');

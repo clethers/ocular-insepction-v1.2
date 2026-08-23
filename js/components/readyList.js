@@ -225,10 +225,17 @@ export class ReadyList {
     const btns = this.container.querySelectorAll('.btn-start-install');
     btns.forEach(btn => {
       btn.addEventListener('click', (e) => {
+        e.preventDefault();
         const rn = btn.getAttribute('data-rn');
-        const targetItem = items.find(i => (i.rnNo === rn || i.id === rn));
-        if (targetItem && this.onSelectInstallation) {
-          this.onSelectInstallation(targetItem);
+        const targetItem = items.find(i => 
+          String(i.rnNo) === String(rn) || 
+          String(i.id) === String(rn) || 
+          i.rnNo === rn || 
+          i.id === rn
+        );
+        const selectedData = targetItem || { id: rn, rnNo: rn };
+        if (this.onSelectInstallation) {
+          this.onSelectInstallation(selectedData);
         }
       });
     });

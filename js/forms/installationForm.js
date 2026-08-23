@@ -45,18 +45,7 @@ export class InstallationForm {
               Audit Connected ✓
             </span>
           </div>
-        </div>
-      ` : `
-        <div class="demo-preset-bar no-print">
-          <div class="demo-preset-text">
-            🔧 <strong>Installation Field Preset:</strong> Load pre-installation commissioning data for <strong>Esperanza Bacolod</strong>.
-          </div>
-          <button class="btn btn-gold" id="btn-load-install-sample">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Load Sample Data
-          </button>
-        </div>
-      `}
+      ` : ''}
       <form id="installation-form-element">
         <!-- HEADER CARD -->
         <div class="form-card">
@@ -547,11 +536,15 @@ export class InstallationForm {
         this.installerSig = new SignaturePad(cEng, { color: '#0b1220' });
         this.clientSig = new SignaturePad(cCli, { color: '#0b1220' });
 
-        document.getElementById('btn-clear-install-engineer').addEventListener('click', () => this.installerSig.clear());
-        document.getElementById('btn-undo-install-engineer').addEventListener('click', () => this.installerSig.undo());
+        const cEngBtn = document.getElementById('btn-clear-install-engineer');
+        if (cEngBtn) cEngBtn.addEventListener('click', () => this.installerSig?.clear());
+        const uEngBtn = document.getElementById('btn-undo-install-engineer');
+        if (uEngBtn) uEngBtn.addEventListener('click', () => this.installerSig?.undo());
 
-        document.getElementById('btn-clear-install-client').addEventListener('click', () => this.clientSig.clear());
-        document.getElementById('btn-undo-install-client').addEventListener('click', () => this.clientSig.undo());
+        const cCliBtn = document.getElementById('btn-clear-install-client');
+        if (cCliBtn) cCliBtn.addEventListener('click', () => this.clientSig?.clear());
+        const uCliBtn = document.getElementById('btn-undo-install-client');
+        if (uCliBtn) uCliBtn.addEventListener('click', () => this.clientSig?.undo());
       }
     }, 100);
   }
@@ -574,40 +567,46 @@ export class InstallationForm {
       this.populateFromOcularData(this.ocularData);
     }
 
-    document.getElementById('btn-save-install-draft').addEventListener('click', () => {
-      const form = document.getElementById('installation-form-element');
-      const formData = new FormData(form);
-      const data = {};
-      for (let [k, v] of formData.entries()) data[k] = v;
-      if (this.installerSig) {
-        const url = this.installerSig.toDataURL();
-        if (isValidBase64Image(url)) data.installerSigImg = url;
-      }
-      if (this.clientSig) {
-        const url = this.clientSig.toDataURL();
-        if (isValidBase64Image(url)) data.clientRepSigImg = url;
-      }
-      FormStorage.saveDraft('installation_form', data);
-      supabaseService.saveInstallationRecord(data);
-      this.showToast('Installation Form saved & synced to Supabase Cloud!');
-    });
+    const saveDraftBtn = document.getElementById('btn-save-install-draft');
+    if (saveDraftBtn) {
+      saveDraftBtn.addEventListener('click', () => {
+        const form = document.getElementById('installation-form-element');
+        const formData = new FormData(form);
+        const data = {};
+        for (let [k, v] of formData.entries()) data[k] = v;
+        if (this.installerSig) {
+          const url = this.installerSig.toDataURL();
+          if (isValidBase64Image(url)) data.installerSigImg = url;
+        }
+        if (this.clientSig) {
+          const url = this.clientSig.toDataURL();
+          if (isValidBase64Image(url)) data.clientRepSigImg = url;
+        }
+        FormStorage.saveDraft('installation_form', data);
+        supabaseService.saveInstallationRecord(data);
+        this.showToast('Installation Form saved & synced to Supabase Cloud!');
+      });
+    }
 
-    document.getElementById('btn-print-install').addEventListener('click', () => {
-      this.generatePrintableDocument();
-      const data = this.getFormData();
-      const originalTitle = document.title;
-      const rnNo = (data.installRnNo || data.rnNo || this.ocularData?.rnNo || '101').replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const clientName = (data.clientSignerName || data.installClientName || data.clientName || 'Client').replace(/[^a-zA-Z0-9_\-]/g, '_');
-      
-      // Set document title to controlled tracking number for default PDF file name
-      document.title = `ECO-SYN-HANDOVER-${rnNo}_${clientName}`;
+    const printInstallBtn = document.getElementById('btn-print-install');
+    if (printInstallBtn) {
+      printInstallBtn.addEventListener('click', () => {
+        this.generatePrintableDocument();
+        const data = this.getFormData();
+        const originalTitle = document.title;
+        const rnNo = (data.installRnNo || data.rnNo || this.ocularData?.rnNo || '101').replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const clientName = (data.clientSignerName || data.installClientName || data.clientName || 'Client').replace(/[^a-zA-Z0-9_\-]/g, '_');
+        
+        // Set document title to controlled tracking number for default PDF file name
+        document.title = `ECO-SYN-HANDOVER-${rnNo}_${clientName}`;
 
-      window.print();
+        window.print();
 
-      setTimeout(() => {
-        document.title = originalTitle;
-      }, 1000);
-    });
+        setTimeout(() => {
+          document.title = originalTitle;
+        }, 1000);
+      });
+    }
   }
 
   getFormData() {

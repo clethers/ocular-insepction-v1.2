@@ -6,12 +6,59 @@
 import { userService, USER_ROLES, ROLE_LABELS } from '../services/userService.js';
 import { auditLogService, AUDIT_CATEGORIES, AUDIT_SEVERITY } from '../services/auditLogService.js';
 import { masterDataService } from '../services/masterDataService.js';
+import { supabaseService } from '../services/supabaseService.js';
 import { AppLayout } from './appLayout.js';
+import { FormStorage } from './formStorage.js';
 
 export class AdminWorkspace {
   constructor(container) {
     this.container = container;
     this.activeTab = 'dashboard'; // 'dashboard', 'users', 'audit', 'masterdata', 'integrations'
+    this.analyticsTimeframe = 'month';
+    this.cloudMetrics = null;
+    this.loadMetrics();
+  }
+
+  async loadMetrics() {
+    try {
+      this.cloudMetrics = await supabaseService.fetchDashboardMetrics();
+      const stage = document.getElementById('admin-tab-stage');
+      if (stage && this.activeTab === 'dashboard') {
+        stage.innerHTML = this.renderTabStage();
+      }
+    } catch (e) {
+      console.warn('[AdminWorkspace] Error fetching metrics:', e);
+    }
+  }
+
+  get metrics() {
+    if (this.cloudMetrics) {
+      return this.cloudMetrics;
+    }
+
+    let readyItems = [];
+    try {
+      readyItems = FormStorage.listReadyInstallations() || [];
+    } catch (e) {
+      readyItems = [];
+    }
+
+    const installed = readyItems.filter(i => i.status === 'INSTALLED' || i.status === 'COMMISSIONED').length;
+    const pending = readyItems.filter(i => !i.status || i.status === 'PENDING' || i.status === 'READY_FOR_INSTALLATION' || i.status === 'VERIFIED').length;
+    const cancelled = readyItems.filter(i => i.status === 'CANCELLED').length;
+
+    const total = installed + pending + cancelled;
+    const conversionRate = total > 0 ? (((installed + pending) / total) * 100).toFixed(1) + '%' : '0.0%';
+
+    return {
+      installed,
+      pending,
+      cancelled,
+      conversionRate,
+      totalLeads: readyItems.length,
+      auditsCount: pending + installed,
+      handoversCount: installed
+    };
   }
 
   render() {
@@ -170,6 +217,7 @@ export class AdminWorkspace {
 
   // TAB: System Health & Inspector Output Analytics Dashboard
   renderDashboardTab() {
+    const m = this.metrics;
     return `
       <div style="display: flex; flex-direction: column; gap: 1.5rem;">
         
@@ -177,49 +225,49 @@ export class AdminWorkspace {
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem;">
           
           <!-- Card 1: INSTALLED -->
-          <div class="form-card" style="padding: 1.25rem; background: var(--bg-card); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
+          <div class="form-card" style="padding: 1.25rem; background: #ffffff; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
               <span style="font-size: 0.75rem; font-weight: 800; color: #10B981; text-transform: uppercase; letter-spacing: 0.05em;">Installed & Commissioned</span>
-              <span style="font-size: 0.7rem; font-weight: 700; color: #10B981; background: rgba(16, 185, 129, 0.12); padding: 0.2rem 0.5rem; border-radius: var(--radius-full);">+14.2%</span>
+              <span style="font-size: 0.7rem; font-weight: 700; color: #10B981; background: rgba(16, 185, 129, 0.12); padding: 0.2rem 0.5rem; border-radius: var(--radius-full);">Live Cloud</span>
             </div>
-            <div style="font-size: 2.2rem; font-weight: 800; color: #10B981; margin-top: 0.35rem; letter-spacing: -0.02em;">580</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
-              40.5% of Total Sites • Handover Certified
+            <div style="font-size: 2.2rem; font-weight: 800; color: #10B981; margin-top: 0.35rem; letter-spacing: -0.02em;">${m.installed}</div>
+            <div style="font-size: 0.75rem; color: #64748B; margin-top: 0.35rem;">
+              Handover Certified Sites
             </div>
           </div>
 
-          <!-- Card 2: PENDING INSTALLATION (Successful Ocular Conducted) -->
-          <div class="form-card" style="padding: 1.25rem; background: var(--bg-card); border: 1px solid rgba(0, 174, 239, 0.3); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
+          <!-- Card 2: PENDING INSTALLATION -->
+          <div class="form-card" style="padding: 1.25rem; background: #ffffff; border: 1px solid rgba(0, 174, 239, 0.3); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
               <span style="font-size: 0.75rem; font-weight: 800; color: var(--ecoworks-blue); text-transform: uppercase; letter-spacing: 0.05em;">Pending Installation</span>
               <span style="font-size: 0.7rem; font-weight: 700; color: var(--ecoworks-blue); background: rgba(0, 174, 239, 0.12); padding: 0.2rem 0.5rem; border-radius: var(--radius-full);">Active Queue</span>
             </div>
-            <div style="font-size: 2.2rem; font-weight: 800; color: var(--ecoworks-blue); margin-top: 0.35rem; letter-spacing: -0.02em;">840</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
-              56.5% • <strong>Successful Oculars Conducted</strong>
+            <div style="font-size: 2.2rem; font-weight: 800; color: var(--ecoworks-blue); margin-top: 0.35rem; letter-spacing: -0.02em;">${m.pending}</div>
+            <div style="font-size: 0.75rem; color: #64748B; margin-top: 0.35rem;">
+              <strong>Successful Oculars Conducted</strong>
             </div>
           </div>
 
           <!-- Card 3: CANCELLED -->
-          <div class="form-card" style="padding: 1.25rem; background: var(--bg-card); border: 1px solid rgba(244, 63, 94, 0.3); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
+          <div class="form-card" style="padding: 1.25rem; background: #ffffff; border: 1px solid rgba(244, 63, 94, 0.3); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
               <span style="font-size: 0.75rem; font-weight: 800; color: #F43F5E; text-transform: uppercase; letter-spacing: 0.05em;">Cancelled Sites</span>
-              <span style="font-size: 0.7rem; font-weight: 700; color: #F43F5E; background: rgba(244, 63, 94, 0.12); padding: 0.2rem 0.5rem; border-radius: var(--radius-full);">3.0% Rate</span>
+              <span style="font-size: 0.7rem; font-weight: 700; color: #F43F5E; background: rgba(244, 63, 94, 0.12); padding: 0.2rem 0.5rem; border-radius: var(--radius-full);">Rate Log</span>
             </div>
-            <div style="font-size: 2.2rem; font-weight: 800; color: #F43F5E; margin-top: 0.35rem; letter-spacing: -0.02em;">42</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+            <div style="font-size: 2.2rem; font-weight: 800; color: #F43F5E; margin-top: 0.35rem; letter-spacing: -0.02em;">${m.cancelled}</div>
+            <div style="font-size: 0.75rem; color: #64748B; margin-top: 0.35rem;">
               Permit / Capacity / Client Cancellation
             </div>
           </div>
 
           <!-- Card 4: OCULAR CONVERSION RATE -->
-          <div class="form-card" style="padding: 1.25rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
+          <div class="form-card" style="padding: 1.25rem; background: #ffffff; border: 1px solid #E2E8F0; border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-              <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Ocular Conversion Rate</span>
+              <span style="font-size: 0.75rem; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">Ocular Conversion Rate</span>
               <span style="font-size: 0.7rem; font-weight: 700; color: #10B981; background: rgba(16, 185, 129, 0.12); padding: 0.2rem 0.5rem; border-radius: var(--radius-full);">Optimal</span>
             </div>
-            <div style="font-size: 2.2rem; font-weight: 800; color: var(--text-primary); margin-top: 0.35rem; letter-spacing: -0.02em;">97.0%</div>
-            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem; display: flex; justify-content: space-between;">
+            <div style="font-size: 2.2rem; font-weight: 800; color: #0F172A; margin-top: 0.35rem; letter-spacing: -0.02em;">${m.conversionRate}</div>
+            <div style="font-size: 0.75rem; color: #64748B; margin-top: 0.35rem; display: flex; justify-content: space-between;">
               <span>(Installed + Pending) / Total</span>
               <span style="color: #10B981; font-weight: 700;">Target &gt; 92%</span>
             </div>
@@ -279,6 +327,9 @@ export class AdminWorkspace {
   // Generates interactive SVG trend chart for Day, Month, or Year analytics
   renderWhatsNextSvgChart() {
     const tf = (this.analyticsTimeframe || 'month').toString().toLowerCase();
+    const m = this.metrics;
+    const totalLeads = m.totalLeads ?? 0;
+    const auditsCount = m.auditsCount ?? 0;
     
     let labels = [];
     let bars = [];
@@ -287,38 +338,44 @@ export class AdminWorkspace {
 
     if (tf === 'day') {
       title = '24-Hour Lead Intake & Inspection Velocity';
-      subtitle = 'Peak intake hours: 09:00 - 14:00 • 28 New Leads Ingested Today';
+      subtitle = `${totalLeads} New Leads Ingested Today • Live Supabase Database Sync`;
       labels = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'];
-      bars = [
-        { label: '00:00', val: 2, height: 18, color: '#00AEEF' },
-        { label: '04:00', val: 1, height: 12, color: '#00AEEF' },
-        { label: '08:00', val: 6, height: 55, color: '#10B981' },
-        { label: '12:00', val: 10, height: 90, color: '#10B981' },
-        { label: '16:00', val: 7, height: 65, color: '#00AEEF' },
-        { label: '20:00', val: 2, height: 22, color: '#00AEEF' },
-        { label: '23:59', val: 0, height: 6, color: '#94A3B8' }
-      ];
+      bars = totalLeads === 0 
+        ? labels.map(l => ({ label: l, val: 0, height: 4, color: '#94A3B8' }))
+        : [
+            { label: '00:00', val: 2, height: 18, color: '#00AEEF' },
+            { label: '04:00', val: 1, height: 12, color: '#00AEEF' },
+            { label: '08:00', val: 6, height: 55, color: '#10B981' },
+            { label: '12:00', val: 10, height: 90, color: '#10B981' },
+            { label: '16:00', val: 7, height: 65, color: '#00AEEF' },
+            { label: '20:00', val: 2, height: 22, color: '#00AEEF' },
+            { label: '23:59', val: 0, height: 6, color: '#94A3B8' }
+          ];
     } else if (tf === 'year') {
       title = '12-Month Annual Lead Trajectory & Forecast';
-      subtitle = 'Annual Cumulative Leads: 1,462 • +24.8% YoY Growth Rate';
+      subtitle = `Annual Cumulative Leads: ${totalLeads} • Live Database Sync`;
       labels = ['Q1 (Jan-Mar)', 'Q2 (Apr-Jun)', 'Q3 (Jul-Sep)', 'Q4 (Oct-Dec)'];
-      bars = [
-        { label: 'Q1', val: 310, height: 50, color: '#00AEEF' },
-        { label: 'Q2', val: 380, height: 70, color: '#00AEEF' },
-        { label: 'Q3', val: 420, height: 85, color: '#10B981' },
-        { label: 'Q4 (Proj)', val: 352, height: 65, color: '#F59E0B' }
-      ];
+      bars = totalLeads === 0
+        ? labels.map(l => ({ label: l, val: 0, height: 4, color: '#94A3B8' }))
+        : [
+            { label: 'Q1', val: 310, height: 50, color: '#00AEEF' },
+            { label: 'Q2', val: 380, height: 70, color: '#00AEEF' },
+            { label: 'Q3', val: 420, height: 85, color: '#10B981' },
+            { label: 'Q4 (Proj)', val: 352, height: 65, color: '#F59E0B' }
+          ];
     } else {
       // Default: Month (30d)
       title = '30-Day Lead Conversion & Pipeline Velocity';
-      subtitle = 'Current Month Total: 340 Leads • 210 Ocular Audits Completed';
+      subtitle = `Current Month Total: ${totalLeads} Leads • ${auditsCount} Ocular Audits Completed`;
       labels = ['W1 (1-7)', 'W2 (8-14)', 'W3 (15-21)', 'W4 (22-30)'];
-      bars = [
-        { label: 'Week 1', val: 75, height: 55, color: '#00AEEF' },
-        { label: 'Week 2', val: 92, height: 80, color: '#00AEEF' },
-        { label: 'Week 3', val: 110, height: 95, color: '#10B981' },
-        { label: 'Week 4', val: 63, height: 50, color: '#F59E0B' }
-      ];
+      bars = totalLeads === 0
+        ? labels.map(l => ({ label: l, val: 0, height: 4, color: '#94A3B8' }))
+        : [
+            { label: 'Week 1', val: 75, height: 55, color: '#00AEEF' },
+            { label: 'Week 2', val: 92, height: 80, color: '#00AEEF' },
+            { label: 'Week 3', val: 110, height: 95, color: '#10B981' },
+            { label: 'Week 4', val: 63, height: 50, color: '#F59E0B' }
+          ];
     }
 
     return `
@@ -361,21 +418,16 @@ export class AdminWorkspace {
   // Generates right panel forecast metrics based on timeframe selection
   renderWhatsNextForecastMetrics() {
     const tf = (this.analyticsTimeframe || 'month').toString().toLowerCase();
+    const m = this.metrics;
 
-    let incoming = '28';
-    let audits = '18';
-    let handovers = '12';
+    let incoming = m.totalLeads ?? 0;
+    let audits = m.auditsCount ?? 0;
+    let handovers = m.handoversCount ?? 0;
     let targetMsg = 'Target: >15 Dispatches / day';
 
     if (tf === 'month') {
-      incoming = '340';
-      audits = '210';
-      handovers = '145';
       targetMsg = 'Target: >120 Handovers / mo';
     } else if (tf === 'year') {
-      incoming = '1,462';
-      audits = '890';
-      handovers = '580';
       targetMsg = 'Target: >500 Installs / yr';
     }
 
@@ -457,18 +509,18 @@ export class AdminWorkspace {
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">Configured cloud webhooks for external enterprise ERPs and SMS providers.</p>
         
         <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-          <div style="padding: 1rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-color); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
+          <div style="padding: 1rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.03);">
             <div>
-              <strong style="color: var(--text-primary);">Semaphore Philippine SMS Gateway API</strong>
-              <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Dispatches automated inspector ETA text alerts to residential clients.</span>
+              <strong style="color: #0f172a;">Semaphore Philippine SMS Gateway API</strong>
+              <span style="font-size: 0.75rem; color: #64748b; display: block;">Dispatches automated inspector ETA text alerts to residential clients.</span>
             </div>
-            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: var(--radius-full);">CONNECTED</span>
+            <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: var(--radius-full);">CONNECTED</span>
           </div>
 
-          <div style="padding: 1rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-color); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
+          <div style="padding: 1rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.03);">
             <div>
-              <strong style="color: var(--text-primary);">SAP Enterprise ERP Webhook Sync</strong>
-              <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Syncs approved commissioning certificates and material pick-lists.</span>
+              <strong style="color: #0f172a;">SAP Enterprise ERP Webhook Sync</strong>
+              <span style="font-size: 0.75rem; color: #64748b; display: block;">Syncs approved commissioning certificates and material pick-lists.</span>
             </div>
             <span class="badge" style="background: rgba(0, 174, 239, 0.15); color: var(--ecoworks-blue); font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: var(--radius-full);">ACTIVE WEBHOOK</span>
           </div>

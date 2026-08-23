@@ -68,12 +68,34 @@ export class InspectorWorkspace {
 
     switch (this.activeTab) {
       case 'ready': {
-        const readyView = new ReadyList(stage);
+        const readyView = new ReadyList(stage, (selectedItem) => {
+          this.activeTab = 'installation';
+          this.selectedOcularData = selectedItem;
+          if (selectedItem) {
+            try {
+              sessionStorage.setItem('synx_selected_installation', JSON.stringify(selectedItem));
+            } catch (e) {
+              console.warn('[Synx] Could not store selected installation item:', e);
+            }
+          }
+          import('../router.js').then(({ Router }) => Router.navigate('/ocular/installation'));
+          this.updateHeaderTitleAndSidebar();
+          this.renderTabStage();
+        });
         readyView.render();
         break;
       }
       case 'installation': {
-        const installView = new InstallationForm(stage);
+        let ocularData = this.selectedOcularData;
+        if (!ocularData) {
+          try {
+            const stored = sessionStorage.getItem('synx_selected_installation');
+            if (stored) ocularData = JSON.parse(stored);
+          } catch (e) {
+            console.warn('[Synx] Could not retrieve stored installation item:', e);
+          }
+        }
+        const installView = new InstallationForm(stage, ocularData);
         installView.render();
         break;
       }
@@ -93,15 +115,15 @@ export class InspectorWorkspace {
   renderHistoryStage(stage) {
     const drafts = FormStorage.listDrafts() || [];
     stage.innerHTML = `
-      <div class="form-card" style="padding: 1.5rem; background: var(--bg-card); border-radius: var(--radius-xl);">
-        <h3 style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 1rem;">Saved Form Drafts & Local Repositories</h3>
+      <div class="form-card" style="padding: 1.5rem; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
+        <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a; margin-bottom: 1rem;">Saved Form Drafts & Local Repositories</h3>
         ${drafts.length > 0 ? `
           <div style="display: flex; flex-direction: column; gap: 0.75rem;">
             ${drafts.map(d => `
-              <div style="padding: 1rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-color); border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
+              <div style="padding: 1rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.03);">
                 <div>
-                  <strong style="color: var(--text-primary);">${d.id}</strong>
-                  <span style="font-size: 0.775rem; color: var(--text-muted); display: block;">Last autosaved: ${new Date(d.updatedAt).toLocaleString()}</span>
+                  <strong style="color: #0f172a;">${d.id}</strong>
+                  <span style="font-size: 0.775rem; color: #64748b; display: block;">Last autosaved: ${new Date(d.updatedAt).toLocaleString()}</span>
                 </div>
                 <button type="button" class="btn btn-secondary btn-load-draft" data-formid="${d.id}">Load Draft</button>
               </div>

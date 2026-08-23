@@ -320,3 +320,86 @@ DROP TRIGGER IF EXISTS trigger_ocular_audit_log ON public.ocular_inspections;
 CREATE TRIGGER trigger_ocular_audit_log
     AFTER UPDATE ON public.ocular_inspections
     FOR EACH ROW EXECUTE FUNCTION public.log_ocular_inspection_changes();
+
+-- ----------------------------------------------------------------------------
+-- 11. Google Calendar Integration Tables (OAuth Credentials & Event Mappings)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.user_google_credentials (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    email VARCHAR(255) NOT NULL,
+    access_token TEXT NOT NULL,
+    refresh_token TEXT,
+    token_type VARCHAR(50) DEFAULT 'Bearer',
+    scope TEXT,
+    token_expiry TIMESTAMP WITH TIME ZONE NOT NULL,
+    calendar_id VARCHAR(255) DEFAULT 'primary',
+    is_sync_enabled BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT unique_user_google_account UNIQUE (user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_google_credentials_user ON public.user_google_credentials(user_id);
+CREATE INDEX IF NOT EXISTS idx_google_credentials_email ON public.user_google_credentials(email);
+
+CREATE TABLE IF NOT EXISTS public.synx_calendar_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    inspection_id UUID REFERENCES public.ocular_inspections(id) ON DELETE CASCADE,
+    installation_id UUID REFERENCES public.installation_records(id) ON DELETE CASCADE,
+    assigned_inspector_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    gcal_event_id VARCHAR(255) NOT NULL,
+    gcal_calendar_id VARCHAR(255) DEFAULT 'primary',
+    event_title VARCHAR(255) NOT NULL,
+    event_description TEXT,
+    event_location TEXT,
+    google_maps_url TEXT,
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    html_link TEXT,
+    sync_status VARCHAR(50) DEFAULT 'SYNCED',
+    last_synced_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT unique_gcal_event UNIQUE (gcal_calendar_id, gcal_event_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_synx_gcal_inspection ON public.synx_calendar_events(inspection_id);
+CREATE INDEX IF NOT EXISTS idx_synx_gcal_installation ON public.synx_calendar_events(installation_id);
+CREATE INDEX IF NOT EXISTS idx_synx_gcal_inspector ON public.synx_calendar_events(assigned_inspector_id);
+CREATE INDEX IF NOT EXISTS idx_synx_gcal_time ON public.synx_calendar_events(start_time, end_time);
+
+ALTER TABLE public.user_google_credentials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.synx_calendar_events ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow users access own google credentials" ON public.user_google_credentials;
+DROP POLICY IF EXISTS "Allow read calendar events" ON public.synx_calendar_events;
+DROP POLICY IF EXISTS "Allow insert calendar events" ON public.synx_calendar_events;
+DROP POLICY IF EXISTS "Allow update calendar events" ON public.synx_calendar_events;
+DROP POLICY IF EXISTS "Allow delete calendar events" ON public.synx_calendar_events;
+
+CREATE POLICY "Allow users access own google credentials" 
+ON public.user_google_credentials FOR ALL 
+USING (auth.uid() = user_id OR public.get_user_role() = 'admin');
+
+CREATE POLICY "Allow read calendar events" 
+ON public.synx_calendar_events FOR SELECT USING (true);
+
+CREATE POLICY "Allow insert calendar events" 
+ON public.synx_calendar_events FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Allow update calendar events" 
+ON public.synx_calendar_events FOR UPDATE USING (true);
+
+CREATE POLICY "Allow delete calendar events" 
+ON public.synx_calendar_events FOR DELETE 
+USING (public.get_user_role() IN ('admin', 'lead_engineer', 'operations_manager'));
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.synx_calendar_events;
+    END IF;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;

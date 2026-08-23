@@ -161,6 +161,54 @@ class SupabaseService {
     }
     return null;
   }
+
+  async fetchDashboardMetrics() {
+    if (this.isConfigured()) {
+      try {
+        const { data: oculars } = await this.client.from('ocular_inspections').select('status');
+        const { data: installs } = await this.client.from('installation_records').select('status');
+
+        const ocularList = oculars || [];
+        const installList = installs || [];
+
+        const installed = installList.length;
+        const pending = ocularList.filter(o => o.status === 'READY_FOR_INSTALLATION' || o.status === 'PENDING').length;
+        const cancelled = ocularList.filter(o => o.status === 'CANCELLED').length;
+        const total = installed + pending + cancelled;
+        const conversionRate = total > 0 ? (((installed + pending) / total) * 100).toFixed(1) + '%' : '0.0%';
+
+        return {
+          installed,
+          pending,
+          cancelled,
+          conversionRate,
+          totalLeads: ocularList.length,
+          auditsCount: pending + installed,
+          handoversCount: installed
+        };
+      } catch (err) {
+        console.warn('[Synx Supabase] Could not fetch metrics from Supabase:', err.message);
+      }
+    }
+
+    // Fallback to FormStorage local records (defaults to 0 if empty)
+    const localItems = FormStorage.listReadyInstallations() || [];
+    const installed = localItems.filter(i => i.status === 'INSTALLED' || i.status === 'COMMISSIONED').length;
+    const pending = localItems.filter(i => !i.status || i.status === 'PENDING' || i.status === 'READY_FOR_INSTALLATION' || i.status === 'VERIFIED').length;
+    const cancelled = localItems.filter(i => i.status === 'CANCELLED').length;
+    const total = installed + pending + cancelled;
+    const conversionRate = total > 0 ? (((installed + pending) / total) * 100).toFixed(1) + '%' : '0.0%';
+
+    return {
+      installed,
+      pending,
+      cancelled,
+      conversionRate,
+      totalLeads: localItems.length,
+      auditsCount: pending + installed,
+      handoversCount: installed
+    };
+  }
 }
 
 export const supabaseService = new SupabaseService();
