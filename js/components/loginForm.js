@@ -155,7 +155,20 @@ export class LoginForm {
                 console.warn('[Synx Auth Notice]', error.message);
               } else if (data?.user) {
                 fullName = data.user.user_metadata?.full_name || fullName;
-                role = data.user.user_metadata?.role || role;
+                // Fetch profile from public.profiles to get the actual role
+                try {
+                  const { data: profileData, error: profileError } = await supabaseService.withTimeout(
+                    supabaseService.client.from('profiles').select('*').eq('id', data.user.id).single(),
+                    3000,
+                    'Fetch user profile after login'
+                  );
+                  if (!profileError && profileData) {
+                    fullName = profileData.full_name || fullName;
+                    role = profileData.role || role;
+                  }
+                } catch (profileErr) {
+                  console.warn('[Synx Auth] Could not fetch profile after login:', profileErr.message);
+                }
               }
             } catch (err) {
               console.warn('[Synx Auth] Supabase auth notice:', err.message);
