@@ -27,14 +27,33 @@ class SupabaseService {
     return !!this.client;
   }
 
+  // Caps how long we wait on a Supabase call before falling back to local data.
+  // Without this, an unreachable backend retries with exponential backoff
+  // (observed ~7.4s) before the underlying promise ever settles.
+  withTimeout(promiseLike, ms = 3000, label = 'Supabase request') {
+    // Supabase query builders are "thenables" that re-run their query on every
+    // .then() call, so materialize a real Promise exactly once via
+    // Promise.resolve() and reuse it below rather than calling .then() twice.
+    const promise = Promise.resolve(promiseLike);
+    promise.catch(() => {}); // avoid an unhandled rejection if this loses the race
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms))
+    ]);
+  }
+
   async fetchReadyInspections() {
     if (this.isConfigured()) {
       try {
-        const { data, error } = await this.client
-          .from('ocular_inspections')
-          .select('*')
-          .eq('status', 'READY_FOR_INSTALLATION')
-          .order('created_at', { ascending: false });
+        const { data, error } = await this.withTimeout(
+          this.client
+            .from('ocular_inspections')
+            .select('*')
+            .eq('status', 'READY_FOR_INSTALLATION')
+            .order('created_at', { ascending: false }),
+          3000,
+          'Fetch ready inspections'
+        );
 
         if (error) throw error;
         if (data && data.length > 0) {
@@ -165,8 +184,8 @@ class SupabaseService {
   async fetchDashboardMetrics() {
     if (this.isConfigured()) {
       try {
-        const { data: oculars } = await this.client.from('ocular_inspections').select('status');
-        const { data: installs } = await this.client.from('installation_records').select('status');
+        const { data: oculars } = await this.withTimeout(this.client.from('ocular_inspections').select('status'), 3000, 'Fetch ocular metrics');
+        const { data: installs } = await this.withTimeout(this.client.from('installation_records').select('status'), 3000, 'Fetch installation metrics');
 
         const ocularList = oculars || [];
         const installList = installs || [];

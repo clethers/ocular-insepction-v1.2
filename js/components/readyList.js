@@ -15,6 +15,14 @@ export class ReadyList {
   }
 
   async render() {
+    this.container.innerHTML = `
+      <div class="ready-pipeline-container">
+        <div class="form-card" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+          Loading Verified Ocular Audits Queue...
+        </div>
+      </div>
+    `;
+
     let cloudReadyItems = [];
     let savedReadyItems = [];
 
