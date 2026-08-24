@@ -1,23 +1,29 @@
 /**
- * Synx Portal - Universal Authentication Component with Multi-Role Demo Switcher
+ * Synx Portal - Universal Authentication Component
  */
 
 import { supabaseService } from '../services/supabaseService.js';
 import { escapeHTML, isSafeRedirectUrl, LoginRateLimiter } from '../utils/security.js';
-import { DEMO_ACCOUNTS, USER_ROLES } from '../services/userService.js';
 import { AuthGuard } from './authGuard.js';
 import logoUrl from '../../assets/ecoworks-logo.png';
+
+function isLikelyNetworkError(error) {
+  if (!error) return false;
+  if (typeof error.status === 'number' && error.status > 0) return false; // a real HTTP response came back
+  return /fetch|network|timeout/i.test(error.message || '');
+}
 
 export class LoginForm {
   constructor(container) {
     this.container = container;
+    this.isSubmitting = false;
   }
 
   render() {
     this.container.innerHTML = `
       <div class="login-wrapper" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background: var(--bg-primary); background-image: radial-gradient(circle at 50% 20%, rgba(0, 174, 239, 0.12), transparent 70%);">
         <div class="form-card login-card" style="max-width: 440px; width: 100%; padding: 2.25rem; background: var(--glass-bg); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); box-shadow: var(--shadow-lg), var(--shadow-glow); border-radius: var(--radius-xl);">
-          
+
           <!-- Brand Header -->
           <div style="text-align: center; margin-bottom: 1.5rem;">
             <img src="${logoUrl}" alt="EcoWorks Logo" style="height: 56px; margin-bottom: 0.75rem;" />
@@ -27,22 +33,6 @@ export class LoginForm {
             <p style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">
               Electrical Infrastructure & EV Operations Platform
             </p>
-          </div>
-
-          <!-- Quick Demo Role Switcher -->
-          <div style="margin-bottom: 1.5rem; padding: 0.85rem; background: rgba(15, 23, 42, 0.6); border: 1px dashed var(--border-color); border-radius: var(--radius-md);">
-            <div style="font-size: 0.725rem; font-weight: 700; color: var(--ecoworks-blue); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.35rem;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-              Quick Test Role Switcher
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;" id="demo-role-buttons">
-              ${DEMO_ACCOUNTS.map(acc => `
-                <button type="button" class="btn btn-secondary btn-demo-role" data-email="${acc.email}" data-role="${acc.role}" style="padding: 0.4rem 0.5rem; font-size: 0.725rem; justify-content: flex-start; gap: 0.35rem; text-align: left;">
-                  <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${acc.role === USER_ROLES.ADMIN ? '#F43F5E' : acc.role === USER_ROLES.CUSTOMER_CARE_MANAGER ? '#00AEEF' : acc.role === USER_ROLES.LEAD_ENGINEER ? '#10B981' : '#F59E0B'};"></span>
-                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${acc.fullName.split(' ')[0]} (${acc.role === USER_ROLES.ADMIN ? 'Admin' : acc.role === USER_ROLES.CUSTOMER_CARE_MANAGER ? 'Manager' : acc.role === USER_ROLES.LEAD_ENGINEER ? 'REE' : 'Inspector'})</span>
-                </button>
-              `).join('')}
-            </div>
           </div>
 
           <!-- Error Alert Banner -->
@@ -55,7 +45,7 @@ export class LoginForm {
           <form id="form-signin">
             <div class="form-group" style="margin-bottom: 1.25rem;">
               <label class="form-label" style="font-weight: 700;">Email Address *</label>
-              <input type="email" id="signin-email" class="form-input" placeholder="user@ecoworks.ph" value="${DEMO_ACCOUNTS[3].email}" required style="width: 100%;" autocomplete="email" />
+              <input type="email" id="signin-email" class="form-input" placeholder="user@ecoworksph.com" required style="width: 100%;" autocomplete="email" />
             </div>
 
             <div class="form-group" style="margin-bottom: 1.5rem;">
@@ -63,7 +53,7 @@ export class LoginForm {
                 <label class="form-label" style="font-weight: 700; margin-bottom: 0;">Password *</label>
               </div>
               <div style="position: relative;">
-                <input type="password" id="signin-password" class="form-input" placeholder="••••••••" value="demo123456" required style="width: 100%; padding-right: 2.75rem;" autocomplete="current-password" />
+                <input type="password" id="signin-password" class="form-input" placeholder="••••••••" required style="width: 100%; padding-right: 2.75rem;" autocomplete="current-password" />
                 <button type="button" id="toggle-signin-password" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.25rem;" aria-label="Toggle password visibility">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
@@ -92,17 +82,7 @@ export class LoginForm {
     const togglePass = document.getElementById('toggle-signin-password');
     const passInput = document.getElementById('signin-password');
     const emailInput = document.getElementById('signin-email');
-
-    // Bind Quick Demo Switcher buttons
-    const demoBtns = document.querySelectorAll('.btn-demo-role');
-    demoBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const targetEmail = btn.getAttribute('data-email');
-        if (emailInput) emailInput.value = targetEmail;
-        demoBtns.forEach(b => b.style.borderColor = '');
-        btn.style.borderColor = 'var(--ecoworks-blue)';
-      });
-    });
+    const submitBtn = document.getElementById('btn-submit-signin');
 
     if (togglePass && passInput) {
       togglePass.addEventListener('click', () => {
@@ -115,6 +95,9 @@ export class LoginForm {
       formSignin.addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        // Debounce: ignore additional submits while one is already in flight
+        if (this.isSubmitting) return;
+
         try {
           // 1. Rate Limiting Check
           const lockStatus = LoginRateLimiter.isLockedOut();
@@ -126,58 +109,85 @@ export class LoginForm {
           // 2. Input Extraction
           const rawEmail = emailInput?.value || '';
           const rawPassword = passInput?.value || '';
-
           const email = escapeHTML(rawEmail.trim());
-          const password = rawPassword.trim();
 
-          if (!email || !password) {
+          if (!email || !rawPassword.trim()) {
             this.showAlert('Please enter both email address and password.');
             return;
           }
 
-          // Match against demo accounts or cloud user
-          const matchedDemo = DEMO_ACCOUNTS.find(a => a.email.toLowerCase() === email.toLowerCase());
-          let role = matchedDemo ? matchedDemo.role : USER_ROLES.FIELD_INSPECTOR;
-          let fullName = matchedDemo ? matchedDemo.fullName : 'Authorized User';
-
-          if (!matchedDemo && email.includes('@')) {
-            const parts = email.split('@')[0].split('.');
-            fullName = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+          if (!supabaseService.isConfigured()) {
+            this.showAlert('Authentication service is not configured. Contact your administrator.');
+            return;
           }
 
-          if (supabaseService.isConfigured()) {
-            try {
-              const { data, error } = await supabaseService.client.auth.signInWithPassword({
-                email: rawEmail,
-                password: rawPassword
-              });
-              if (error) {
-                console.warn('[Synx Auth Notice]', error.message);
-              } else if (data?.user) {
-                fullName = data.user.user_metadata?.full_name || fullName;
-                role = data.user.user_metadata?.role || role;
-              }
-            } catch (err) {
-              console.warn('[Synx Auth] Supabase auth notice:', err.message);
+          this.setSubmitting(true, submitBtn);
+
+          // 3. Sign in — network/timeout failures throw here
+          let signInResult;
+          try {
+            signInResult = await supabaseService.withTimeout(
+              supabaseService.client.auth.signInWithPassword({ email: rawEmail, password: rawPassword }),
+              3000,
+              'Sign in'
+            );
+          } catch (timeoutErr) {
+            this.showAlert("Can't reach the server — check your connection and try again.");
+            return;
+          }
+
+          const { data, error } = signInResult;
+
+          // Auth completed a round trip but rejected — could still be a
+          // network-flavored error resolved instead of thrown (observed with
+          // this project's Supabase outage), so classify before counting it.
+          if (error) {
+            if (isLikelyNetworkError(error)) {
+              this.showAlert("Can't reach the server — check your connection and try again.");
+            } else {
+              LoginRateLimiter.recordFailedAttempt();
+              this.showAlert('Invalid email or password.');
             }
+            return;
+          }
+
+          // 4. Fetch the real profile (role/name/status) — public.profiles is
+          // the source of truth, not Supabase Auth's user_metadata.
+          let profile;
+          try {
+            const profileResult = await supabaseService.withTimeout(
+              supabaseService.client.from('profiles').select('*').eq('id', data.user.id).single(),
+              3000,
+              'Fetch profile'
+            );
+            profile = profileResult.data;
+          } catch (timeoutErr) {
+            await supabaseService.client.auth.signOut();
+            this.showAlert("Can't reach the server — check your connection and try again.");
+            return;
+          }
+
+          if (!profile || profile.status !== 'ACTIVE') {
+            await supabaseService.client.auth.signOut();
+            this.showAlert('This account is not active. Contact your administrator.');
+            return;
           }
 
           LoginRateLimiter.reset();
-          const userSession = {
-            id: matchedDemo ? matchedDemo.id : 'user-' + Date.now(),
-            email: email,
-            fullName: fullName,
-            role: role,
-            loggedInAt: new Date().toISOString()
-          };
 
-          localStorage.setItem('synx_auth_user', JSON.stringify(userSession));
+          const sessionUser = {
+            id: data.user.id,
+            email: profile.email,
+            fullName: profile.full_name,
+            role: profile.role,
+            department: profile.department
+          };
 
           // Determine target landing URL
           const redirectParam = new URLSearchParams(window.location.search).get('redirect');
-          let targetUrl = redirectParam && isSafeRedirectUrl(redirectParam)
+          const targetUrl = redirectParam && isSafeRedirectUrl(redirectParam)
             ? decodeURIComponent(redirectParam)
-            : AuthGuard.getDefaultLandingPage(userSession);
+            : AuthGuard.getDefaultLandingPage(sessionUser);
 
           // SPA navigation fallback to avoid hard page reload 404s
           if (window.history && typeof window.history.pushState === 'function') {
@@ -196,8 +206,18 @@ export class LoginForm {
         } catch (loginErr) {
           console.error('[Synx Auth Error]', loginErr);
           this.showAlert(`Authentication system notice: ${loginErr?.message || 'Unable to process login. Please try again.'}`);
+        } finally {
+          this.setSubmitting(false, submitBtn);
         }
       });
+    }
+  }
+
+  setSubmitting(isSubmitting, submitBtn) {
+    this.isSubmitting = isSubmitting;
+    if (submitBtn) {
+      submitBtn.disabled = isSubmitting;
+      submitBtn.textContent = isSubmitting ? 'Signing In…' : 'Sign In to Session';
     }
   }
 

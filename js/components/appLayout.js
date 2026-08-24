@@ -7,6 +7,7 @@ import logoUrl from '../../assets/ecoworks-logo.png';
 import { AuthGuard } from './authGuard.js';
 import { USER_ROLES } from '../services/userService.js';
 import { FormStorage } from './formStorage.js';
+import { supabaseService } from '../services/supabaseService.js';
 
 export class AppLayout {
   /**
@@ -239,7 +240,7 @@ export class AppLayout {
     `;
 
     this.bindLayoutEvents();
-    this.updateUserHeader();
+    this.updateUserHeader(user);
     return document.getElementById('main-content-view');
   }
 
@@ -289,9 +290,15 @@ export class AppLayout {
     }
 
     if (logoutBtn) {
-      logoutBtn.addEventListener('click', () => {
+      logoutBtn.addEventListener('click', async () => {
         menu.style.display = 'none';
-        localStorage.removeItem('synx_auth_user');
+        if (supabaseService.isConfigured()) {
+          try {
+            await supabaseService.client.auth.signOut();
+          } catch (err) {
+            console.warn('[Synx AppLayout] signOut failed during logout:', err.message);
+          }
+        }
         this.showToast('Logged out of session. Redirecting to login...');
         setTimeout(() => {
           import('../router.js').then(({ Router }) => Router.navigate('/login'));
@@ -315,35 +322,24 @@ export class AppLayout {
     }
   }
 
-  static updateUserHeader() {
-    const rawUser = localStorage.getItem('synx_auth_user');
-    let user = {
+  static updateUserHeader(user) {
+    const resolvedUser = user || {
       fullName: 'Engr. Marco Santos, REE',
       email: 'inspector.marco@ecoworks.ph',
-      role: USER_ROLES.FIELD_INSPECTOR,
-      initials: 'MS'
+      role: USER_ROLES.FIELD_INSPECTOR
     };
 
-    if (rawUser) {
-      try {
-        const parsed = JSON.parse(rawUser);
-        if (parsed.fullName) user.fullName = parsed.fullName;
-        if (parsed.email) user.email = parsed.email;
-        if (parsed.role) user.role = parsed.role;
-        if (user.fullName) {
-          const cleanName = String(user.fullName).replace(/^(Engr\.|Dr\.|Mr\.|Ms\.|PE)\s*/i, '').trim();
-          const parts = cleanName.split(/\s+/).filter(Boolean);
-          if (parts.length > 1) {
-            const f = (parts[0][0] || 'U');
-            const l = (parts[parts.length - 1][0] || 'S');
-            user.initials = (f + l).toUpperCase();
-          } else if (parts.length === 1) {
-            user.initials = parts[0].substring(0, 2).toUpperCase();
-          } else {
-            user.initials = 'US';
-          }
-        }
-      } catch (e) {}
+    let initials = 'US';
+    if (resolvedUser.fullName) {
+      const cleanName = String(resolvedUser.fullName).replace(/^(Engr\.|Dr\.|Mr\.|Ms\.|PE)\s*/i, '').trim();
+      const parts = cleanName.split(/\s+/).filter(Boolean);
+      if (parts.length > 1) {
+        const f = (parts[0][0] || 'U');
+        const l = (parts[parts.length - 1][0] || 'S');
+        initials = (f + l).toUpperCase();
+      } else if (parts.length === 1) {
+        initials = parts[0].substring(0, 2).toUpperCase();
+      }
     }
 
     const avatarElem = document.getElementById('header-user-avatar');
@@ -354,13 +350,13 @@ export class AppLayout {
     const modalEmail = document.getElementById('modal-user-email');
     const modalRole = document.getElementById('modal-user-role');
 
-    if (avatarElem) avatarElem.textContent = user.initials;
-    if (nameElem) nameElem.textContent = user.fullName.replace(/, REE$/i, '');
-    if (dropdownName) dropdownName.textContent = user.fullName;
-    if (dropdownEmail) dropdownEmail.textContent = user.email;
-    if (modalName) modalName.value = user.fullName;
-    if (modalEmail) modalEmail.value = user.email;
-    if (modalRole) modalRole.value = user.role;
+    if (avatarElem) avatarElem.textContent = initials;
+    if (nameElem) nameElem.textContent = resolvedUser.fullName.replace(/, REE$/i, '');
+    if (dropdownName) dropdownName.textContent = resolvedUser.fullName;
+    if (dropdownEmail) dropdownEmail.textContent = resolvedUser.email;
+    if (modalName) modalName.value = resolvedUser.fullName;
+    if (modalEmail) modalEmail.value = resolvedUser.email;
+    if (modalRole) modalRole.value = resolvedUser.role;
   }
 
   static showToast(message) {
