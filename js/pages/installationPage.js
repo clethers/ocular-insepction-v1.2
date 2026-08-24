@@ -7,10 +7,10 @@ import { AuthGuard } from '../components/authGuard.js';
 import { InstallationForm } from '../forms/installationForm.js';
 import { FormStorage } from '../components/formStorage.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  if (!AuthGuard.protectPage()) return;
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!(await AuthGuard.protectPage())) return;
 
-  const container = AppLayout.init('installation', 'EV Charger Installation & Commissioning Form');
+  const container = await AppLayout.init('installation', 'EV Charger Installation & Commissioning Form');
   if (container) {
     // Check if data passed via URL query parameters or sessionStorage
     let selectedData = null;

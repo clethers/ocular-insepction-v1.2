@@ -6,10 +6,10 @@ import { AppLayout } from '../components/appLayout.js';
 import { AuthGuard } from '../components/authGuard.js';
 import { FormStorage } from '../components/formStorage.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  if (!AuthGuard.protectPage()) return;
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!(await AuthGuard.protectPage())) return;
 
-  const container = AppLayout.init('history', 'Saved Drafts & Form History');
+  const container = await AppLayout.init('history', 'Saved Drafts & Form History');
   if (container) {
     renderHistoryView(container);
   }

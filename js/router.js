@@ -37,13 +37,13 @@ export class Router {
     if (window.location.pathname !== path) {
       window.history.pushState({}, '', path);
     }
-    this.handleRoute(path);
+    return this.handleRoute(path);
   }
 
-  static handleRoute(pathname) {
+  static async handleRoute(pathname) {
     try {
       const cleanPath = pathname.replace(/\/$/, '') || '/';
-      const user = AuthGuard.getSessionUser();
+      const user = await AuthGuard.getSessionUser();
 
       // 1. Unauthenticated Route Guard
       if (!user && cleanPath !== '/login') {
@@ -56,7 +56,7 @@ export class Router {
         if (user) {
           const defaultPath = this.getDefaultPathForRole(user.role);
           window.history.replaceState({}, '', defaultPath);
-          this.handleRoute(defaultPath);
+          await this.handleRoute(defaultPath);
         } else {
           this.renderLogin();
         }
@@ -65,27 +65,27 @@ export class Router {
 
       // 2. Role-Based Route Protection
       if (cleanPath.startsWith('/admin')) {
-        if (!AuthGuard.hasRole([USER_ROLES.ADMIN])) {
+        if (!(await AuthGuard.hasRole([USER_ROLES.ADMIN]))) {
           AppLayout.showToast('Unauthorized access to Admin Console. Redirected to Inspector Portal.');
           this.navigate('/ocular');
           return;
         }
-        this.renderAdminWorkspace(cleanPath);
+        await this.renderAdminWorkspace(cleanPath);
         return;
       }
 
       if (cleanPath.startsWith('/manager')) {
-        if (!AuthGuard.hasRole([USER_ROLES.CUSTOMER_CARE_MANAGER, USER_ROLES.LEAD_ENGINEER, USER_ROLES.ADMIN])) {
+        if (!(await AuthGuard.hasRole([USER_ROLES.CUSTOMER_CARE_MANAGER, USER_ROLES.LEAD_ENGINEER, USER_ROLES.ADMIN]))) {
           AppLayout.showToast('Unauthorized access to Manager Workspace. Redirected to Inspector Portal.');
           this.navigate('/ocular');
           return;
         }
-        this.renderManagerWorkspace(cleanPath);
+        await this.renderManagerWorkspace(cleanPath);
         return;
       }
 
       // Default route: Inspector Workspace (/ocular, /ocular/ready, /ocular/installation, /ocular/history)
-      this.renderInspectorWorkspace(cleanPath);
+      await this.renderInspectorWorkspace(cleanPath);
     } catch (routeErr) {
       console.error('[Synx Router Error]', routeErr);
       this.renderError(routeErr);
@@ -133,7 +133,7 @@ export class Router {
     }
   }
 
-  static renderInspectorWorkspace(pathname) {
+  static async renderInspectorWorkspace(pathname) {
     const tabMatch = pathname.replace('/ocular', '').replace('/', '') || 'ocular';
     const activeTab = ['ready', 'installation', 'history', 'ocular'].includes(tabMatch) ? tabMatch : 'ocular';
 
@@ -144,7 +144,7 @@ export class Router {
       history: 'Saved Form Drafts & Repositories'
     };
 
-    const mainStage = AppLayout.init(pathname, titleMap[activeTab] || 'Field Inspector Portal');
+    const mainStage = await AppLayout.init(pathname, titleMap[activeTab] || 'Field Inspector Portal');
     if (mainStage) {
       const workspace = new InspectorWorkspace(mainStage);
       workspace.activeTab = activeTab;
@@ -152,7 +152,7 @@ export class Router {
     }
   }
 
-  static renderManagerWorkspace(pathname) {
+  static async renderManagerWorkspace(pathname) {
     const tabMatch = pathname.replace('/manager', '').replace('/', '') || 'dispatch';
     const titleMap = {
       dispatch: 'Workload & Field Dispatch Command Center',
@@ -164,7 +164,7 @@ export class Router {
       kpis: 'Operations KPIs & Performance Analytics'
     };
 
-    const mainStage = AppLayout.init(pathname, titleMap[tabMatch] || 'Customer Care & Manager Hub');
+    const mainStage = await AppLayout.init(pathname, titleMap[tabMatch] || 'Customer Care & Manager Hub');
     if (mainStage) {
       const workspace = new ManagerWorkspace(mainStage);
       if (tabMatch && workspace.activeTab !== tabMatch) {
@@ -174,7 +174,7 @@ export class Router {
     }
   }
 
-  static renderAdminWorkspace(pathname) {
+  static async renderAdminWorkspace(pathname) {
     const tabMatch = pathname.replace('/admin', '').replace('/', '') || 'dashboard';
     const titleMap = {
       dashboard: 'System Dashboard',
@@ -182,7 +182,7 @@ export class Router {
       audit: 'Audit Logs'
     };
 
-    const mainStage = AppLayout.init(pathname, titleMap[tabMatch] || 'System Dashboard');
+    const mainStage = await AppLayout.init(pathname, titleMap[tabMatch] || 'System Dashboard');
     if (mainStage) {
       const workspace = new AdminWorkspace(mainStage);
       if (tabMatch && workspace.activeTab !== tabMatch) {

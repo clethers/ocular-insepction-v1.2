@@ -5,9 +5,9 @@
 import { LoginForm } from '../components/loginForm.js';
 import { AuthGuard } from '../components/authGuard.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // If already logged in, redirect straight to ocular inspection page
-  if (AuthGuard.redirectIfLoggedIn()) return;
+  if (await AuthGuard.redirectIfLoggedIn()) return;
 
   const appElem = document.getElementById('app');
   if (appElem) {

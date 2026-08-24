@@ -3,9 +3,9 @@ import { AppLayout } from '../components/appLayout.js';
 import { AdminWorkspace } from '../components/adminWorkspace.js';
 import { USER_ROLES } from '../services/userService.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Protect page: require Admin role
-  if (!AuthGuard.protectPageWithRole([USER_ROLES.ADMIN])) return;
+  if (!(await AuthGuard.protectPageWithRole([USER_ROLES.ADMIN]))) return;
 
   const urlParams = new URLSearchParams(window.location.search);
   const tab = urlParams.get('tab') || 'dashboard';
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Initialize shared AppLayout with activeView '/admin/' + tab
-  const mainStage = AppLayout.init('/admin/' + tab, titleMap[tab] || 'System Dashboard');
+  const mainStage = await AppLayout.init('/admin/' + tab, titleMap[tab] || 'System Dashboard');
 
   // Render Admin Workspace Component
   if (mainStage) {

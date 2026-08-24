@@ -6,10 +6,10 @@ import { AppLayout } from '../components/appLayout.js';
 import { AuthGuard } from '../components/authGuard.js';
 import { ReadyList } from '../components/readyList.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  if (!AuthGuard.protectPage()) return;
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!(await AuthGuard.protectPage())) return;
 
-  const container = AppLayout.init('ready', 'Ready for Installation Queue');
+  const container = await AppLayout.init('ready', 'Ready for Installation Queue');
   if (container) {
     const readyList = new ReadyList(container, (selectedItem) => {
       // Navigate to installation page with query parameters

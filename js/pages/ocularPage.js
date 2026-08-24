@@ -7,11 +7,11 @@ import { AuthGuard } from '../components/authGuard.js';
 import { InspectorWorkspace } from '../components/inspectorWorkspace.js';
 import { USER_ROLES } from '../services/userService.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Protect page: require Field Inspector, Customer Care Manager, REE Engineer, or Admin
-  if (!AuthGuard.protectPageWithRole([USER_ROLES.FIELD_INSPECTOR, USER_ROLES.CUSTOMER_CARE_MANAGER, USER_ROLES.LEAD_ENGINEER, USER_ROLES.ADMIN])) return;
+  if (!(await AuthGuard.protectPageWithRole([USER_ROLES.FIELD_INSPECTOR, USER_ROLES.CUSTOMER_CARE_MANAGER, USER_ROLES.LEAD_ENGINEER, USER_ROLES.ADMIN]))) return;
 
-  const container = AppLayout.init('ocular', 'Field Inspector Portal');
+  const container = await AppLayout.init('ocular', 'Field Inspector Portal');
   if (container) {
     const workspace = new InspectorWorkspace(container);
     workspace.render();

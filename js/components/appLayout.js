@@ -15,12 +15,12 @@ export class AppLayout {
    * @param {string} pageTitle - Title displayed in the top header
    * @returns {HTMLElement} The main content container element (#main-content-view)
    */
-  static init(activePath = '/ocular', pageTitle = 'Synx Portal') {
+  static async init(activePath = '/ocular', pageTitle = 'Synx Portal') {
     const appElem = document.getElementById('app');
     if (!appElem) return null;
 
     const isCollapsed = localStorage.getItem('synx_sidebar_collapsed') !== 'false';
-    const user = AuthGuard.getSessionUser() || {
+    const user = (await AuthGuard.getSessionUser()) || {
       fullName: 'Engr. Marco Santos, REE',
       email: 'inspector.marco@ecoworks.ph',
       role: USER_ROLES.FIELD_INSPECTOR
