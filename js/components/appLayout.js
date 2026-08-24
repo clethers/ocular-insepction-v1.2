@@ -294,7 +294,7 @@ export class AppLayout {
         menu.style.display = 'none';
         if (supabaseService.isConfigured()) {
           try {
-            await supabaseService.client.auth.signOut();
+            await supabaseService.withTimeout(supabaseService.client.auth.signOut(), 3000, 'Sign out');
           } catch (err) {
             console.warn('[Synx AppLayout] signOut failed during logout:', err.message);
           }
