@@ -26,7 +26,11 @@ export class AuthGuard {
 
     const profile = await this.getProfile(session.user.id);
     if (!profile || profile.status !== 'ACTIVE') {
-      await supabaseService.client.auth.signOut();
+      try {
+        await supabaseService.client.auth.signOut();
+      } catch (err) {
+        console.warn('[Synx AuthGuard] signOut failed during forced logout:', err.message);
+      }
       profileCache = null;
       return null;
     }
