@@ -4,6 +4,7 @@
  */
 
 import { supabaseService } from './supabaseService.js';
+import { AuthGuard } from '../components/authGuard.js';
 
 export const AUDIT_CATEGORIES = {
   AUTHENTICATION: 'AUTHENTICATION',
@@ -121,7 +122,7 @@ class AuditLogService {
   }
 
   async logEvent({ category, eventType, description, severity = AUDIT_SEVERITY.INFO, resourceType = '', resourceId = '', changesDelta = {} }) {
-    const activeUser = JSON.parse(localStorage.getItem('synx_auth_user') || '{}');
+    const activeUser = (await AuthGuard.getSessionUser()) || {};
     const newLog = {
       id: 'log-' + Date.now(),
       createdAt: new Date().toISOString(),

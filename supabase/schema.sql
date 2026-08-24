@@ -230,7 +230,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Profiles Policies
 CREATE POLICY "Allow users read inspector profiles" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Allow users update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Allow users update own profile" ON public.profiles;
 CREATE POLICY "Allow admin manage all profiles" ON public.profiles FOR ALL USING (public.get_user_role() = 'admin');
 
 -- Ocular Inspections Policies

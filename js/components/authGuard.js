@@ -13,21 +13,43 @@ export class AuthGuard {
    * truth for role/name/status). Returns null if there's no session, no
    * matching profile, or the profile isn't ACTIVE — in the latter cases the
    * Supabase session is also cleared, so a deactivated account can't keep
-   * using an already-open tab.
+   * using an already-open tab. A network/timeout failure while verifying
+   * the profile denies THIS check without destroying the session, since a
+   * transient connectivity blip (this app's primary users are on mobile
+   * networks) shouldn't force re-entry of credentials.
    */
   static async getSessionUser() {
     if (!supabaseService.isConfigured()) return null;
 
-    const { data: { session } } = await supabaseService.client.auth.getSession();
+    let session;
+    try {
+      const result = await supabaseService.withTimeout(
+        supabaseService.client.auth.getSession(),
+        3000,
+        'Get session'
+      );
+      session = result.data.session;
+    } catch (err) {
+      console.warn('[Synx AuthGuard] Could not get session:', err.message);
+      return null;
+    }
+
     if (!session) {
       profileCache = null;
       return null;
     }
 
-    const profile = await this.getProfile(session.user.id);
+    let profile;
+    try {
+      profile = await this.getProfile(session.user.id);
+    } catch (err) {
+      console.warn('[Synx AuthGuard] Could not verify profile, denying this check:', err.message);
+      return null;
+    }
+
     if (!profile || profile.status !== 'ACTIVE') {
       try {
-        await supabaseService.client.auth.signOut();
+        await supabaseService.withTimeout(supabaseService.client.auth.signOut(), 3000, 'Sign out');
       } catch (err) {
         console.warn('[Synx AuthGuard] signOut failed during forced logout:', err.message);
       }
@@ -50,25 +72,33 @@ export class AuthGuard {
    * PROFILE_CACHE_TTL_MS so route-change checks within a session don't
    * hit Supabase on every click. A deactivation still takes effect within
    * one TTL window on the affected browser.
+   *
+   * Returns the profile row, or null if the query succeeded and found no
+   * matching row. Throws if the query itself failed (timeout, network
+   * error) — callers must NOT treat a thrown error the same as "no
+   * profile": one means "this account doesn't exist / isn't valid", the
+   * other means "we couldn't ask".
    */
   static async getProfile(userId) {
     if (profileCache && profileCache.userId === userId && (Date.now() - profileCache.fetchedAt) < PROFILE_CACHE_TTL_MS) {
       return profileCache.profile;
     }
 
-    try {
-      const { data, error } = await supabaseService.withTimeout(
-        supabaseService.client.from('profiles').select('*').eq('id', userId).single(),
-        3000,
-        'Fetch user profile'
-      );
-      if (error || !data) return null;
-      profileCache = { userId, profile: data, fetchedAt: Date.now() };
-      return data;
-    } catch (err) {
-      console.warn('[Synx AuthGuard] Could not fetch profile:', err.message);
-      return null;
+    const { data, error } = await supabaseService.withTimeout(
+      supabaseService.client.from('profiles').select('*').eq('id', userId).single(),
+      3000,
+      'Fetch user profile'
+    );
+
+    if (error) {
+      // PGRST116 = no rows found for .single() — a genuine "no such profile",
+      // not a transport failure.
+      if (error.code === 'PGRST116') return null;
+      throw error;
     }
+
+    profileCache = { userId, profile: data, fetchedAt: Date.now() };
+    return data;
   }
 
   /**

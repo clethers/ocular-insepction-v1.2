@@ -162,13 +162,13 @@ export class LoginForm {
             );
             profile = profileResult.data;
           } catch (timeoutErr) {
-            await supabaseService.client.auth.signOut();
+            await supabaseService.withTimeout(supabaseService.client.auth.signOut(), 3000, 'Sign out');
             this.showAlert("Can't reach the server — check your connection and try again.");
             return;
           }
 
           if (!profile || profile.status !== 'ACTIVE') {
-            await supabaseService.client.auth.signOut();
+            await supabaseService.withTimeout(supabaseService.client.auth.signOut(), 3000, 'Sign out');
             this.showAlert('This account is not active. Contact your administrator.');
             return;
           }
