@@ -7,12 +7,12 @@ import { supabaseService } from '../services/supabaseService.js';
 import { FormStorage } from './formStorage.js';
 import { auditLogService, AUDIT_CATEGORIES, AUDIT_SEVERITY } from '../services/auditLogService.js';
 import { AppLayout } from './appLayout.js';
+import { ClientDirectory } from './clientDirectory.js';
 
 export class ManagerWorkspace {
   constructor(container) {
     this.container = container;
     this.activeTab = 'dispatch'; // 'dispatch', 'qa', 'clientsearch', 'calendar', 'tickets', 'materials', 'sms', 'kpis'
-    this.searchQuery = '';
     this.readyItems = [];
     this.loadData();
   }
@@ -28,14 +28,19 @@ export class ManagerWorkspace {
   render() {
     this.container.innerHTML = `
       <div class="manager-workspace-wrapper" style="padding: 0;">
-        
+
         <!-- Stage Container -->
         <div id="manager-tab-stage">
-          ${this.renderTabStage()}
+          ${this.activeTab === 'clientsearch' ? '' : this.renderTabStage()}
         </div>
 
       </div>
     `;
+
+    if (this.activeTab === 'clientsearch') {
+      const stage = this.container.querySelector('#manager-tab-stage');
+      new ClientDirectory(stage).render();
+    }
 
     this.bindEvents();
   }
@@ -44,8 +49,6 @@ export class ManagerWorkspace {
     switch (this.activeTab) {
       case 'qa':
         return this.renderQATab();
-      case 'clientsearch':
-        return this.renderClientSearchTab();
       case 'calendar':
         return this.renderCalendarTab();
       case 'tickets':
@@ -137,55 +140,6 @@ export class ManagerWorkspace {
               All ocular audits approved! No pending QA items in queue.
             </div>
           `}
-        </div>
-      </div>
-    `;
-  }
-
-  // TAB 3: 360 Client Search & Timeline
-  renderClientSearchTab() {
-    return `
-      <div class="form-card" style="padding: 1.5rem; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
-        <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a; margin-bottom: 0.5rem;">360° Client & Installation Account Search</h3>
-        <p style="font-size: 0.825rem; color: #64748b; margin-bottom: 1.25rem;">Search by Client Name, RN Number, Installation No., or Contact Phone Number.</p>
-
-        <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem;">
-          <input type="text" id="input-client-search" class="form-input" placeholder="Search client name, RN-88092, #AUD-101..." value="${this.searchQuery}" style="flex: 1;" />
-          <button type="button" class="btn btn-primary" id="btn-trigger-client-search">Search Account</button>
-        </div>
-
-        <div style="padding: 1.5rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-lg); box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-            <div>
-              <h4 style="margin: 0; color: #0f172a; font-size: 1.1rem;">Ayala Land Commercial EV Charging Depot</h4>
-              <span style="font-size: 0.775rem; color: #64748b;">Reference: RN-88092 | Contact: +63 917 555 0192</span>
-            </div>
-            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.6rem; border-radius: var(--radius-full);">STATUS: READY FOR INSTALLATION</span>
-          </div>
-
-          <!-- Step-by-Step Status Timeline -->
-          <div style="display: flex; justify-content: space-between; position: relative; margin-top: 1.5rem;">
-            <div style="text-align: center; flex: 1;">
-              <div style="width: 28px; height: 28px; border-radius: 50%; background: #10B981; color: #fff; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.35rem auto; font-size: 0.75rem; font-weight: 800;">✓</div>
-              <span style="font-size: 0.75rem; font-weight: 700; color: #0f172a; display: block;">Audit Requested</span>
-              <span style="font-size: 0.7rem; color: #64748b;">Aug 08</span>
-            </div>
-            <div style="text-align: center; flex: 1;">
-              <div style="width: 28px; height: 28px; border-radius: 50%; background: #10B981; color: #fff; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.35rem auto; font-size: 0.75rem; font-weight: 800;">✓</div>
-              <span style="font-size: 0.75rem; font-weight: 700; color: #0f172a; display: block;">Ocular Conducted</span>
-              <span style="font-size: 0.7rem; color: #64748b;">Aug 10</span>
-            </div>
-            <div style="text-align: center; flex: 1;">
-              <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--ecoworks-blue); color: #fff; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.35rem auto; font-size: 0.75rem; font-weight: 800;">3</div>
-              <span style="font-size: 0.75rem; font-weight: 700; color: var(--ecoworks-blue); display: block;">Manager Approved</span>
-              <span style="font-size: 0.7rem; color: #64748b;">Aug 11 (Today)</span>
-            </div>
-            <div style="text-align: center; flex: 1; opacity: 0.5;">
-              <div style="width: 28px; height: 28px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.35rem auto; font-size: 0.75rem; font-weight: 800;">4</div>
-              <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; display: block;">Install Scheduled</span>
-              <span style="font-size: 0.7rem; color: #64748b;">Pending</span>
-            </div>
-          </div>
         </div>
       </div>
     `;
@@ -373,16 +327,6 @@ export class ManagerWorkspace {
           severity: AUDIT_SEVERITY.INFO
         });
         AppLayout.showToast('Support ticket logged successfully.');
-      });
-    }
-
-    // Client search button
-    const searchBtn = this.container.querySelector('#btn-trigger-client-search');
-    const searchInput = this.container.querySelector('#input-client-search');
-    if (searchBtn && searchInput) {
-      searchBtn.addEventListener('click', () => {
-        this.searchQuery = searchInput.value;
-        AppLayout.showToast(`Searching client account: "${this.searchQuery}"`);
       });
     }
   }
