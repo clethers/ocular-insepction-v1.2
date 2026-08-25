@@ -9,11 +9,12 @@ import { masterDataService } from '../services/masterDataService.js';
 import { supabaseService } from '../services/supabaseService.js';
 import { AppLayout } from './appLayout.js';
 import { FormStorage } from './formStorage.js';
+import { ClientDirectory } from './clientDirectory.js';
 
 export class AdminWorkspace {
   constructor(container) {
     this.container = container;
-    this.activeTab = 'dashboard'; // 'dashboard', 'users', 'audit', 'masterdata', 'integrations'
+    this.activeTab = 'dashboard'; // 'dashboard', 'users', 'clients', 'audit', 'masterdata', 'integrations'
     this.analyticsTimeframe = 'month';
     this.cloudMetrics = null;
     this.loadMetrics();
@@ -64,14 +65,19 @@ export class AdminWorkspace {
   render() {
     this.container.innerHTML = `
       <div class="admin-workspace-wrapper" style="padding: 0;">
-        
+
         <!-- Tab Content Target -->
         <div id="admin-tab-stage">
-          ${this.renderTabStage()}
+          ${this.activeTab === 'clients' ? '' : this.renderTabStage()}
         </div>
 
       </div>
     `;
+
+    if (this.activeTab === 'clients') {
+      const stage = this.container.querySelector('#admin-tab-stage');
+      new ClientDirectory(stage, { canDelete: true }).render();
+    }
 
     this.bindEvents();
   }
