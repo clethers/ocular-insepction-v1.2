@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS public.ocular_inspections (
     location_address TEXT,
     gps_lat NUMERIC(10, 7),
     gps_lng NUMERIC(10, 7),
-    
+
     -- Technical Feeder & Specs
     voltage_system VARCHAR(50),
     voltage_specify VARCHAR(100),
@@ -79,46 +79,93 @@ CREATE TABLE IF NOT EXISTS public.ocular_inspections (
     spare_breaker VARCHAR(10) DEFAULT 'YES',
     space_provision VARCHAR(10) DEFAULT 'YES',
     breaker_brand VARCHAR(100),
+    breaker_brand_other VARCHAR(100),
     breaker_mounting VARCHAR(50),
+    breaker_mounting_other VARCHAR(100),
+    breaker_design VARCHAR(50),
+    breaker_design_other VARCHAR(100),
+    breaker_pole VARCHAR(50),
+    breaker_pole_other VARCHAR(100),
     grounding_system VARCHAR(10) DEFAULT 'YES',
     grounding_rod_location TEXT,
-    
+
+    -- NEMA 3R Enclosure (Dedicated Charger Breaker, If Applicable)
+    nema3r_has VARCHAR(10) DEFAULT 'NO',
+    nema3r_breaker VARCHAR(100),
+    nema3r_brand_type VARCHAR(100),
+    nema3r_brand_type_other VARCHAR(100),
+    nema3r_mounting VARCHAR(50),
+    nema3r_mounting_other VARCHAR(100),
+    nema3r_design VARCHAR(50),
+    nema3r_design_other VARCHAR(100),
+    nema3r_pole VARCHAR(50),
+    nema3r_pole_other VARCHAR(100),
+
     -- EV Charger & Conduit Specs
     charger_location TEXT,
     estimate_distance VARCHAR(50),
     pvc_qty INT DEFAULT 0,
     emt_qty INT DEFAULT 0,
     imc_qty INT DEFAULT 0,
+    conduit_rsc_qty INT DEFAULT 0,
+    conduit_pvc_moulding_qty INT DEFAULT 0,
+    conduit_black_flexible_qty INT DEFAULT 0,
+    conduit_pvc_flexible_orange_qty INT DEFAULT 0,
+    conduit_other_type VARCHAR(100),
+    conduit_other_qty INT DEFAULT 0,
     liquid_tight_fittings VARCHAR(10) DEFAULT 'YES',
     liquid_tight_qty INT DEFAULT 0,
+    liquid_tight_connector_qty INT DEFAULT 0,
+    liquid_tight_flex_length VARCHAR(50),
+
+    -- Elbows
+    elbow_emt90_qty INT DEFAULT 0,
+    elbow_imc90_qty INT DEFAULT 0,
+    elbow_rsc90_qty INT DEFAULT 0,
+
+    -- Conduit Bodies
     lb_qty INT DEFAULT 0,
     lr_qty INT DEFAULT 0,
     ll_qty INT DEFAULT 0,
+    body_c_qty INT DEFAULT 0,
     t_qty INT DEFAULT 0,
+
+    -- Connectors, Couplings & Clamps
+    connector_emt_set_screw_qty INT DEFAULT 0,
+    connector_emt_compression_qty INT DEFAULT 0,
+    coupling_emt_set_screw_qty INT DEFAULT 0,
+    coupling_emt_compression_qty INT DEFAULT 0,
+    clamp_c_two_hole_qty INT DEFAULT 0,
+    clamp_c_one_hole_qty INT DEFAULT 0,
+    clamp_strap_malleable_qty INT DEFAULT 0,
+
     utility_box_qty INT DEFAULT 0,
     square_box_qty INT DEFAULT 0,
     octagon_box_qty INT DEFAULT 0,
     junction_box_qty INT DEFAULT 0,
     other_boxes_notes TEXT,
-    
+
     -- Retrofittings & Remarks
     retrofittings TEXT,
     replacement TEXT,
     new_installation TEXT,
-    
+
     -- Signatures & Verification
     inspected_by_name VARCHAR(255),
     inspector_sig_img TEXT,
     witnessed_by_name VARCHAR(255),
     witness_sig_img TEXT,
-    
+
     -- Photo Attachments (Proposed Layout, Tapping Point, Wiring/Conduit, EV Location)
     photo_attachments JSONB DEFAULT '{}'::jsonb,
 
     -- Record Pipeline Status
     status VARCHAR(50) DEFAULT 'READY_FOR_INSTALLATION',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    -- Archiving (soft delete) — NULL means active/visible, a timestamp means archived
+    deleted_at TIMESTAMPTZ DEFAULT NULL
 );
 
 -- Indexing for fast search queries
