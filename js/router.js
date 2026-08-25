@@ -179,7 +179,8 @@ export class Router {
     const titleMap = {
       dashboard: 'System Dashboard',
       users: 'User Management',
-      audit: 'Audit Logs'
+      audit: 'Audit Logs',
+      clients: 'Client Directory'
     };
 
     const mainStage = await AppLayout.init(pathname, titleMap[tabMatch] || 'System Dashboard');

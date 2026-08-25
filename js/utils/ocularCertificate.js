@@ -3,9 +3,10 @@
  */
 
 import logoUrl from '../../assets/ecoworks-logo.png';
+import { escapeHTML } from './security.js';
 
 function resolveOther(value, otherValue) {
-  return value === 'OTHER' ? (otherValue || 'N/A') : (value || 'N/A');
+  return escapeHTML(value === 'OTHER' ? (otherValue || 'N/A') : (value || 'N/A'));
 }
 
 function formatPrintDateTime(rawDate) {
@@ -38,7 +39,7 @@ export function renderCertificateHTML(data) {
       </div>
       <div class="cert-doc-meta">
         <div class="cert-badge">✓ TECHNICAL AUDIT VERIFIED</div><br/>
-        <strong>DOC REF:</strong> SYNX-AUD-${data.rnNo || '101'}<br/>
+        <strong>DOC REF:</strong> SYNX-AUD-${escapeHTML(data.rnNo || '101')}<br/>
         <strong>DATE ISSUED:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
       </div>
     </div>
@@ -52,23 +53,23 @@ export function renderCertificateHTML(data) {
     <!-- Section 1: Identification -->
     <div class="cert-section-title">
       <span>1. Client & Site Identification</span>
-      <span style="font-size: 7.5pt; opacity: 0.8;">RN: ${data.rnNo || 'N/A'}</span>
+      <span style="font-size: 7.5pt; opacity: 0.8;">RN: ${escapeHTML(data.rnNo || 'N/A')}</span>
     </div>
     <table class="cert-table">
       <tr>
-        <td width="50%"><span class="cert-label">CLIENT / OWNER:</span> <span class="cert-value">${data.clientName || 'N/A'}</span></td>
-        <td width="50%"><span class="cert-label">AUDIT DATE & TIME:</span> <span class="cert-value">${formatPrintDateTime(data.dateTime)} (${data.timeStart || '--'} - ${data.timeEnd || '--'})</span></td>
+        <td width="50%"><span class="cert-label">CLIENT / OWNER:</span> <span class="cert-value">${escapeHTML(data.clientName || 'N/A')}</span></td>
+        <td width="50%"><span class="cert-label">AUDIT DATE & TIME:</span> <span class="cert-value">${escapeHTML(formatPrintDateTime(data.dateTime))} (${escapeHTML(data.timeStart || '--')} - ${escapeHTML(data.timeEnd || '--')})</span></td>
       </tr>
       <tr>
-        <td colspan="2"><span class="cert-label">LOCATION ADDRESS:</span> <span class="cert-value">${data.locationAddress || 'N/A'}</span></td>
+        <td colspan="2"><span class="cert-label">LOCATION ADDRESS:</span> <span class="cert-value">${escapeHTML(data.locationAddress || 'N/A')}</span></td>
       </tr>
       <tr>
-        <td><span class="cert-label">REFERENCE NO. (RN):</span> <span class="cert-value">${data.rnNo || 'N/A'}</span></td>
-        <td><span class="cert-label">INSTALLATION NO.:</span> <span class="cert-value">${data.installationNo || 'N/A'}</span></td>
+        <td><span class="cert-label">REFERENCE NO. (RN):</span> <span class="cert-value">${escapeHTML(data.rnNo || 'N/A')}</span></td>
+        <td><span class="cert-label">INSTALLATION NO.:</span> <span class="cert-value">${escapeHTML(data.installationNo || 'N/A')}</span></td>
       </tr>
       <tr>
-        <td><span class="cert-label">SCOPE OF WORK:</span> <span class="cert-value">${data.scopeOfWorks || 'Site Audit'}</span></td>
-        <td><span class="cert-label">CONTACT NUMBER:</span> <span class="cert-value">${data.contactNo || 'N/A'}</span></td>
+        <td><span class="cert-label">SCOPE OF WORK:</span> <span class="cert-value">${escapeHTML(data.scopeOfWorks || 'Site Audit')}</span></td>
+        <td><span class="cert-label">CONTACT NUMBER:</span> <span class="cert-value">${escapeHTML(data.contactNo || 'N/A')}</span></td>
       </tr>
     </table>
 
@@ -83,16 +84,16 @@ export function renderCertificateHTML(data) {
           <span class="cert-label">VOLTAGE SYSTEM:</span> &nbsp;&nbsp;
           <span class="cert-checkbox">${data.voltageSystem === '220_ll' ? '✓' : ''}</span> 220 VAC, 1 Ø, Line-to-Line &nbsp;&nbsp;&nbsp;
           <span class="cert-checkbox">${data.voltageSystem === '220_lg' ? '✓' : ''}</span> 220 VAC, 1 Ø, Line-to-Ground &nbsp;&nbsp;&nbsp;
-          <span class="cert-checkbox">${data.voltageSystem === 'others' ? '✓' : ''}</span> Custom: ${data.voltageSpecify || 'N/A'}
+          <span class="cert-checkbox">${data.voltageSystem === 'others' ? '✓' : ''}</span> Custom: ${escapeHTML(data.voltageSpecify || 'N/A')}
         </td>
       </tr>
       <tr>
-        <td width="50%"><span class="cert-label">MAIN DISTRIBUTION BREAKER:</span> <span class="cert-value">${data.mainBreaker || 'N/A'}</span></td>
-        <td width="50%"><span class="cert-label">NO. OF BRANCH CIRCUITS:</span> <span class="cert-value">${data.noOfBranches || '0'} Branches</span></td>
+        <td width="50%"><span class="cert-label">MAIN DISTRIBUTION BREAKER:</span> <span class="cert-value">${escapeHTML(data.mainBreaker || 'N/A')}</span></td>
+        <td width="50%"><span class="cert-label">NO. OF BRANCH CIRCUITS:</span> <span class="cert-value">${escapeHTML(data.noOfBranches || '0')} Branches</span></td>
       </tr>
       <tr>
-        <td><span class="cert-label">SPARE BREAKER (40AT/2P/230V):</span> <span class="cert-pass-badge">${data.spareBreaker || 'NO'}</span></td>
-        <td><span class="cert-label">PANELBOARD SPACE PROVISION:</span> <span class="cert-pass-badge">${data.spaceProvision || 'NO'}</span></td>
+        <td><span class="cert-label">SPARE BREAKER (40AT/2P/230V):</span> <span class="cert-pass-badge">${escapeHTML(data.spareBreaker || 'NO')}</span></td>
+        <td><span class="cert-label">PANELBOARD SPACE PROVISION:</span> <span class="cert-pass-badge">${escapeHTML(data.spaceProvision || 'NO')}</span></td>
       </tr>
       <tr>
         <td><span class="cert-label">BREAKER BRAND:</span> <span class="cert-value">${resolveOther(data.breakerBrandType, data.breakerBrandTypeOther)}</span></td>
@@ -104,14 +105,14 @@ export function renderCertificateHTML(data) {
       </tr>
       <tr>
         <td colspan="2">
-          <span class="cert-label">EQUIPMENT GROUNDING SYSTEM:</span> <span class="cert-pass-badge">${data.groundingSystem || 'YES'}</span> &nbsp;&nbsp;
-          <em>(Ground Rod Location Note: ${data.groundingRodLocation || 'Standard Panel Earth Bar'})</em>
+          <span class="cert-label">EQUIPMENT GROUNDING SYSTEM:</span> <span class="cert-pass-badge">${escapeHTML(data.groundingSystem || 'YES')}</span> &nbsp;&nbsp;
+          <em>(Ground Rod Location Note: ${escapeHTML(data.groundingRodLocation || 'Standard Panel Earth Bar')})</em>
         </td>
       </tr>
       ${data.hasNema3r === 'YES' ? `
       <tr>
         <td colspan="2">
-          <span class="cert-label">NEMA 3R ENCLOSURE (DEDICATED CHARGER BREAKER):</span> <span class="cert-value">${data.nema3rBreaker || 'N/A'}</span><br/>
+          <span class="cert-label">NEMA 3R ENCLOSURE (DEDICATED CHARGER BREAKER):</span> <span class="cert-value">${escapeHTML(data.nema3rBreaker || 'N/A')}</span><br/>
           <span class="cert-label">BRAND:</span> ${resolveOther(data.nema3rBrandType, data.nema3rBrandTypeOther)} &nbsp;&nbsp;
           <span class="cert-label">MOUNTING:</span> ${resolveOther(data.nema3rMounting, data.nema3rMountingOther)} &nbsp;&nbsp;
           <span class="cert-label">DESIGN:</span> ${resolveOther(data.nema3rDesign, data.nema3rDesignOther)} &nbsp;&nbsp;
@@ -127,27 +128,27 @@ export function renderCertificateHTML(data) {
     </div>
     <table class="cert-table">
       <tr>
-        <td width="50%"><span class="cert-label">DESIGNATED CHARGER LOCATION:</span> <span class="cert-value">${data.chargerLocation || 'N/A'}</span></td>
-        <td width="50%"><span class="cert-label">ESTIMATED RUN DISTANCE:</span> <span class="cert-value">${data.estimateDistance || 'N/A'}</span></td>
+        <td width="50%"><span class="cert-label">DESIGNATED CHARGER LOCATION:</span> <span class="cert-value">${escapeHTML(data.chargerLocation || 'N/A')}</span></td>
+        <td width="50%"><span class="cert-label">ESTIMATED RUN DISTANCE:</span> <span class="cert-value">${escapeHTML(data.estimateDistance || 'N/A')}</span></td>
       </tr>
       <tr>
         <td colspan="2">
-          <span class="cert-label">CONDUITS (3/4"):</span> PVC: <strong>${data.conduitPvc || 0}</strong> &nbsp;|&nbsp; EMT: <strong>${data.conduitEmt || 0}</strong> &nbsp;|&nbsp; IMC: <strong>${data.conduitImc || 0}</strong> &nbsp;|&nbsp; RSC: <strong>${data.conduitRsc || 0}</strong> &nbsp;|&nbsp; PVC Moulding: <strong>${data.conduitPvcMoulding || 0}</strong> &nbsp;|&nbsp; Black Coated Flexible: <strong>${data.conduitBlackFlexible || 0}</strong> &nbsp;|&nbsp; PVC Flexible Orange: <strong>${data.conduitPvcFlexibleOrange || 0}</strong>
-          ${data.conduitOtherType ? `&nbsp;|&nbsp; ${data.conduitOtherType}: <strong>${data.conduitOtherQty || 0}</strong>` : ''}<br/>
-          <span class="cert-label">ELBOWS:</span> EMT 90°: <strong>${data.elbowEmt90 || 0}</strong> &nbsp;|&nbsp; IMC 90°: <strong>${data.elbowImc90 || 0}</strong> &nbsp;|&nbsp; RSC 90°: <strong>${data.elbowRsc90 || 0}</strong><br/>
-          <span class="cert-label">CONDUIT BODIES:</span> LB: <strong>${data.bodyLb || 0}</strong> &nbsp;|&nbsp; LR: <strong>${data.bodyLr || 0}</strong> &nbsp;|&nbsp; LL: <strong>${data.bodyLl || 0}</strong> &nbsp;|&nbsp; C: <strong>${data.bodyC || 0}</strong> &nbsp;|&nbsp; T: <strong>${data.bodyT || 0}</strong><br/>
-          <span class="cert-label">LIQUID TIGHT:</span> Connector (Straight): <strong>${data.liquidTightConnectorQty || 0}</strong> pcs &nbsp;|&nbsp; Flexible Conduit Length: <strong>${data.liquidTightFlexLength || 'N/A'}</strong><br/>
-          <span class="cert-label">CONNECTORS:</span> EMT Set Screw: <strong>${data.connectorEmtSetScrew || 0}</strong> &nbsp;|&nbsp; EMT Compression: <strong>${data.connectorEmtCompression || 0}</strong><br/>
-          <span class="cert-label">COUPLING:</span> EMT Set Screw: <strong>${data.couplingEmtSetScrew || 0}</strong> &nbsp;|&nbsp; EMT Compression: <strong>${data.couplingEmtCompression || 0}</strong><br/>
-          <span class="cert-label">CONDUIT CLAMPS:</span> C-Clamp 2-Hole: <strong>${data.clampCTwoHole || 0}</strong> &nbsp;|&nbsp; C-Clamp 1-Hole: <strong>${data.clampCOneHole || 0}</strong> &nbsp;|&nbsp; Strap-Malleable Iron: <strong>${data.clampStrapMalleable || 0}</strong><br/>
-          <span class="cert-label">ENCLOSURES & BOXES:</span> Utility: <strong>${data.boxUtility || 0}</strong> &nbsp;|&nbsp; Square: <strong>${data.boxSquare || 0}</strong> &nbsp;|&nbsp; Octagon: <strong>${data.boxOctagon || 0}</strong> &nbsp;|&nbsp; Junction: <strong>${data.boxJunction || 0}</strong>
+          <span class="cert-label">CONDUITS (3/4"):</span> PVC: <strong>${escapeHTML(data.conduitPvc || 0)}</strong> &nbsp;|&nbsp; EMT: <strong>${escapeHTML(data.conduitEmt || 0)}</strong> &nbsp;|&nbsp; IMC: <strong>${escapeHTML(data.conduitImc || 0)}</strong> &nbsp;|&nbsp; RSC: <strong>${escapeHTML(data.conduitRsc || 0)}</strong> &nbsp;|&nbsp; PVC Moulding: <strong>${escapeHTML(data.conduitPvcMoulding || 0)}</strong> &nbsp;|&nbsp; Black Coated Flexible: <strong>${escapeHTML(data.conduitBlackFlexible || 0)}</strong> &nbsp;|&nbsp; PVC Flexible Orange: <strong>${escapeHTML(data.conduitPvcFlexibleOrange || 0)}</strong>
+          ${data.conduitOtherType ? `&nbsp;|&nbsp; ${escapeHTML(data.conduitOtherType)}: <strong>${escapeHTML(data.conduitOtherQty || 0)}</strong>` : ''}<br/>
+          <span class="cert-label">ELBOWS:</span> EMT 90°: <strong>${escapeHTML(data.elbowEmt90 || 0)}</strong> &nbsp;|&nbsp; IMC 90°: <strong>${escapeHTML(data.elbowImc90 || 0)}</strong> &nbsp;|&nbsp; RSC 90°: <strong>${escapeHTML(data.elbowRsc90 || 0)}</strong><br/>
+          <span class="cert-label">CONDUIT BODIES:</span> LB: <strong>${escapeHTML(data.bodyLb || 0)}</strong> &nbsp;|&nbsp; LR: <strong>${escapeHTML(data.bodyLr || 0)}</strong> &nbsp;|&nbsp; LL: <strong>${escapeHTML(data.bodyLl || 0)}</strong> &nbsp;|&nbsp; C: <strong>${escapeHTML(data.bodyC || 0)}</strong> &nbsp;|&nbsp; T: <strong>${escapeHTML(data.bodyT || 0)}</strong><br/>
+          <span class="cert-label">LIQUID TIGHT:</span> Connector (Straight): <strong>${escapeHTML(data.liquidTightConnectorQty || 0)}</strong> pcs &nbsp;|&nbsp; Flexible Conduit Length: <strong>${escapeHTML(data.liquidTightFlexLength || 'N/A')}</strong><br/>
+          <span class="cert-label">CONNECTORS:</span> EMT Set Screw: <strong>${escapeHTML(data.connectorEmtSetScrew || 0)}</strong> &nbsp;|&nbsp; EMT Compression: <strong>${escapeHTML(data.connectorEmtCompression || 0)}</strong><br/>
+          <span class="cert-label">COUPLING:</span> EMT Set Screw: <strong>${escapeHTML(data.couplingEmtSetScrew || 0)}</strong> &nbsp;|&nbsp; EMT Compression: <strong>${escapeHTML(data.couplingEmtCompression || 0)}</strong><br/>
+          <span class="cert-label">CONDUIT CLAMPS:</span> C-Clamp 2-Hole: <strong>${escapeHTML(data.clampCTwoHole || 0)}</strong> &nbsp;|&nbsp; C-Clamp 1-Hole: <strong>${escapeHTML(data.clampCOneHole || 0)}</strong> &nbsp;|&nbsp; Strap-Malleable Iron: <strong>${escapeHTML(data.clampStrapMalleable || 0)}</strong><br/>
+          <span class="cert-label">ENCLOSURES & BOXES:</span> Utility: <strong>${escapeHTML(data.boxUtility || 0)}</strong> &nbsp;|&nbsp; Square: <strong>${escapeHTML(data.boxSquare || 0)}</strong> &nbsp;|&nbsp; Octagon: <strong>${escapeHTML(data.boxOctagon || 0)}</strong> &nbsp;|&nbsp; Junction: <strong>${escapeHTML(data.boxJunction || 0)}</strong>
         </td>
       </tr>
       <tr>
         <td colspan="2">
-          <span class="cert-label">RETROFITTINGS:</span> <span class="cert-value">${data.workRetrofitting || 'None required'}</span> &nbsp;&nbsp;|&nbsp;&nbsp;
-          <span class="cert-label">REPLACEMENTS:</span> <span class="cert-value">${data.workReplacement || 'None'}</span><br/>
-          <span class="cert-label">NEW INSTALLATION DETAILS:</span> <span class="cert-value">${data.workNewInstallation || 'Standard Wall Connector Installation'}</span>
+          <span class="cert-label">RETROFITTINGS:</span> <span class="cert-value">${escapeHTML(data.workRetrofitting || 'None required')}</span> &nbsp;&nbsp;|&nbsp;&nbsp;
+          <span class="cert-label">REPLACEMENTS:</span> <span class="cert-value">${escapeHTML(data.workReplacement || 'None')}</span><br/>
+          <span class="cert-label">NEW INSTALLATION DETAILS:</span> <span class="cert-value">${escapeHTML(data.workNewInstallation || 'Standard Wall Connector Installation')}</span>
         </td>
       </tr>
     </table>
@@ -184,7 +185,7 @@ export function renderCertificateHTML(data) {
           <div class="cert-sig-card">
             <div class="cert-sig-header">AUDITED & CERTIFIED BY</div>
             ${data.inspectorSigImg ? `<img src="${data.inspectorSigImg}" class="cert-sig-img"/>` : '<div style="height: 50px;"></div>'}
-            <div class="cert-sig-name">${data.inspectedByName || 'Engr. Marco Santos, REE'}</div>
+            <div class="cert-sig-name">${escapeHTML(data.inspectedByName || 'Engr. Marco Santos, REE')}</div>
             <div class="cert-sig-title">Lead Certified Electrical Inspector (REE)</div>
           </div>
         </div>
@@ -192,7 +193,7 @@ export function renderCertificateHTML(data) {
           <div class="cert-sig-card">
             <div class="cert-sig-header">WITNESSED & ACKNOWLEDGED BY</div>
             ${data.witnessSigImg ? `<img src="${data.witnessSigImg}" class="cert-sig-img"/>` : '<div style="height: 50px;"></div>'}
-            <div class="cert-sig-name">${data.witnessedByName || 'Client / Property Representative'}</div>
+            <div class="cert-sig-name">${escapeHTML(data.witnessedByName || 'Client / Property Representative')}</div>
             <div class="cert-sig-title">Authorized Witness Signature</div>
           </div>
         </div>

@@ -240,8 +240,48 @@ class SupabaseService {
     ['inspectedByName', 'inspected_by_name'],
     ['inspectorSigImg', 'inspector_sig_img'],
     ['witnessedByName', 'witnessed_by_name'],
-    ['witnessSigImg', 'witness_sig_img']
+    ['witnessSigImg', 'witness_sig_img'],
+    ['liquidTightFittings', 'liquid_tight_fittings'],
+    ['liquidTightQty', 'liquid_tight_qty'],
+    ['boxOthers', 'other_boxes_notes']
   ];
+
+  // Columns in supabase/schema.sql's ocular_inspections table that are typed
+  // INT. Local form data arrives as raw strings (or '' for untouched free-text
+  // inputs), which Postgres/PostgREST rejects for INT columns — coerce these
+  // to a number or null before building the upsert payload (see mapLocalToSupabase).
+  static INT_COLUMNS = new Set([
+    'no_branches',
+    'pvc_qty',
+    'emt_qty',
+    'imc_qty',
+    'conduit_rsc_qty',
+    'conduit_pvc_moulding_qty',
+    'conduit_black_flexible_qty',
+    'conduit_pvc_flexible_orange_qty',
+    'conduit_other_qty',
+    'liquid_tight_qty',
+    'liquid_tight_connector_qty',
+    'elbow_emt90_qty',
+    'elbow_imc90_qty',
+    'elbow_rsc90_qty',
+    'lb_qty',
+    'lr_qty',
+    'll_qty',
+    'body_c_qty',
+    't_qty',
+    'connector_emt_set_screw_qty',
+    'connector_emt_compression_qty',
+    'coupling_emt_set_screw_qty',
+    'coupling_emt_compression_qty',
+    'clamp_c_two_hole_qty',
+    'clamp_c_one_hole_qty',
+    'clamp_strap_malleable_qty',
+    'utility_box_qty',
+    'square_box_qty',
+    'octagon_box_qty',
+    'junction_box_qty'
+  ]);
 
   mapSupabaseToLocal(row) {
     const data = { id: row.id };
@@ -262,7 +302,19 @@ class SupabaseService {
     };
     for (const [localKey, column] of SupabaseService.FIELD_MAP) {
       if (column === 'client_name' || column === 'rn_no' || column === 'installation_no') continue;
-      if (data[localKey] !== undefined) payload[column] = data[localKey];
+      if (data[localKey] === undefined) continue;
+
+      if (SupabaseService.INT_COLUMNS.has(column)) {
+        const raw = data[localKey];
+        if (raw === '' || raw === undefined || raw === null) {
+          payload[column] = null;
+        } else {
+          const parsed = Number.parseInt(raw, 10);
+          payload[column] = Number.isNaN(parsed) ? null : parsed;
+        }
+      } else {
+        payload[column] = data[localKey];
+      }
     }
     payload.photo_attachments = data.photos || {};
     payload.status = data.status || 'READY_FOR_INSTALLATION';

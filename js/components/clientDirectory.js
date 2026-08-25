@@ -10,6 +10,7 @@ import { supabaseService } from '../services/supabaseService.js';
 import { printOcularCertificate } from '../utils/ocularCertificate.js';
 import { auditLogService, AUDIT_CATEGORIES, AUDIT_SEVERITY } from '../services/auditLogService.js';
 import { AppLayout } from './appLayout.js';
+import { escapeHTML } from '../utils/security.js';
 
 export class ClientDirectory {
   constructor(container, { canDelete = false } = {}) {
@@ -121,20 +122,20 @@ export class ClientDirectory {
           <div style="padding: 1.25rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-lg); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);">
             <div>
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                <strong style="color: #0f172a; font-size: 1rem;">${r.clientName || 'Unnamed Client'}</strong>
-                <span class="badge" style="background: rgba(0, 174, 239, 0.15); color: var(--ecoworks-blue); font-size: 0.725rem; font-weight: 700; padding: 0.2rem 0.5rem;">${r.rnNo || 'N/A'}</span>
-                <span class="badge" style="background: rgba(100, 116, 139, 0.15); color: #475569; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem;">${r.status || 'UNKNOWN'}</span>
+                <strong style="color: #0f172a; font-size: 1rem;">${escapeHTML(r.clientName || 'Unnamed Client')}</strong>
+                <span class="badge" style="background: rgba(0, 174, 239, 0.15); color: var(--ecoworks-blue); font-size: 0.725rem; font-weight: 700; padding: 0.2rem 0.5rem;">${escapeHTML(r.rnNo || 'N/A')}</span>
+                <span class="badge" style="background: rgba(100, 116, 139, 0.15); color: #475569; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem;">${escapeHTML(r.status || 'UNKNOWN')}</span>
               </div>
               <div style="font-size: 0.8rem; color: #64748b;">
-                ${r.locationAddress || 'No address on file'} | ${r.dateTimeDisplay || 'Recent'}
+                ${escapeHTML(r.locationAddress || 'No address on file')} | ${escapeHTML(r.dateTimeDisplay || 'Recent')}
               </div>
             </div>
             <div style="display: flex; gap: 0.5rem;">
-              <button type="button" class="btn btn-primary btn-print-client" data-rn="${r.rnNo || ''}" style="padding: 0.5rem 0.9rem; font-size: 0.8rem;">
+              <button type="button" class="btn btn-primary btn-print-client" data-rn="${escapeHTML(r.rnNo || '')}" style="padding: 0.5rem 0.9rem; font-size: 0.8rem;">
                 Print
               </button>
-              ${this.canDelete ? `
-                <button type="button" class="btn btn-secondary btn-delete-client" data-rn="${r.rnNo || ''}" style="padding: 0.5rem 0.9rem; font-size: 0.8rem; color: #F43F5E; border-color: #F43F5E;">
+              ${this.canDelete && this.dataSource === 'cloud' ? `
+                <button type="button" class="btn btn-secondary btn-delete-client" data-rn="${escapeHTML(r.rnNo || '')}" style="padding: 0.5rem 0.9rem; font-size: 0.8rem; color: #F43F5E; border-color: #F43F5E;">
                   Delete
                 </button>
               ` : ''}
@@ -152,7 +153,7 @@ export class ClientDirectory {
       });
     });
 
-    if (this.canDelete) {
+    if (this.canDelete && this.dataSource === 'cloud') {
       listEl.querySelectorAll('.btn-delete-client').forEach(btn => {
         btn.addEventListener('click', () => {
           const rn = btn.getAttribute('data-rn');
