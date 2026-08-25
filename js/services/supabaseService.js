@@ -124,44 +124,112 @@ class SupabaseService {
     return true;
   }
 
+  // Single source of truth for local(camelCase)<->Supabase(snake_case) field
+  // names, so the two directions can't drift apart again the way the old
+  // hand-picked-subset versions of these functions did. deleted_at is
+  // deliberately not here — it's an archive marker, never part of local
+  // form data.
+  static FIELD_MAP = [
+    ['rnNo', 'rn_no'],
+    ['installationNo', 'installation_no'],
+    ['clientName', 'client_name'],
+    ['contactNo', 'contact_no'],
+    ['scopeOfWorks', 'scope_of_works'],
+    ['locationAddress', 'location_address'],
+    ['dateTime', 'date_time'],
+    ['timeStart', 'time_start'],
+    ['timeEnd', 'time_end'],
+    ['voltageSystem', 'voltage_system'],
+    ['voltageSpecify', 'voltage_specify'],
+    ['mainBreaker', 'main_breaker'],
+    ['noOfBranches', 'no_branches'],
+    ['spareBreaker', 'spare_breaker'],
+    ['spaceProvision', 'space_provision'],
+    ['breakerBrandType', 'breaker_brand'],
+    ['breakerBrandTypeOther', 'breaker_brand_other'],
+    ['breakerMounting', 'breaker_mounting'],
+    ['breakerMountingOther', 'breaker_mounting_other'],
+    ['breakerDesign', 'breaker_design'],
+    ['breakerDesignOther', 'breaker_design_other'],
+    ['breakerPole', 'breaker_pole'],
+    ['breakerPoleOther', 'breaker_pole_other'],
+    ['groundingSystem', 'grounding_system'],
+    ['groundingRodLocation', 'grounding_rod_location'],
+    ['hasNema3r', 'nema3r_has'],
+    ['nema3rBreaker', 'nema3r_breaker'],
+    ['nema3rBrandType', 'nema3r_brand_type'],
+    ['nema3rBrandTypeOther', 'nema3r_brand_type_other'],
+    ['nema3rMounting', 'nema3r_mounting'],
+    ['nema3rMountingOther', 'nema3r_mounting_other'],
+    ['nema3rDesign', 'nema3r_design'],
+    ['nema3rDesignOther', 'nema3r_design_other'],
+    ['nema3rPole', 'nema3r_pole'],
+    ['nema3rPoleOther', 'nema3r_pole_other'],
+    ['chargerLocation', 'charger_location'],
+    ['estimateDistance', 'estimate_distance'],
+    ['conduitPvc', 'pvc_qty'],
+    ['conduitEmt', 'emt_qty'],
+    ['conduitImc', 'imc_qty'],
+    ['conduitRsc', 'conduit_rsc_qty'],
+    ['conduitPvcMoulding', 'conduit_pvc_moulding_qty'],
+    ['conduitBlackFlexible', 'conduit_black_flexible_qty'],
+    ['conduitPvcFlexibleOrange', 'conduit_pvc_flexible_orange_qty'],
+    ['conduitOtherType', 'conduit_other_type'],
+    ['conduitOtherQty', 'conduit_other_qty'],
+    ['elbowEmt90', 'elbow_emt90_qty'],
+    ['elbowImc90', 'elbow_imc90_qty'],
+    ['elbowRsc90', 'elbow_rsc90_qty'],
+    ['bodyLb', 'lb_qty'],
+    ['bodyLr', 'lr_qty'],
+    ['bodyLl', 'll_qty'],
+    ['bodyC', 'body_c_qty'],
+    ['bodyT', 't_qty'],
+    ['liquidTightConnectorQty', 'liquid_tight_connector_qty'],
+    ['liquidTightFlexLength', 'liquid_tight_flex_length'],
+    ['connectorEmtSetScrew', 'connector_emt_set_screw_qty'],
+    ['connectorEmtCompression', 'connector_emt_compression_qty'],
+    ['couplingEmtSetScrew', 'coupling_emt_set_screw_qty'],
+    ['couplingEmtCompression', 'coupling_emt_compression_qty'],
+    ['clampCTwoHole', 'clamp_c_two_hole_qty'],
+    ['clampCOneHole', 'clamp_c_one_hole_qty'],
+    ['clampStrapMalleable', 'clamp_strap_malleable_qty'],
+    ['boxUtility', 'utility_box_qty'],
+    ['boxSquare', 'square_box_qty'],
+    ['boxOctagon', 'octagon_box_qty'],
+    ['boxJunction', 'junction_box_qty'],
+    ['workRetrofitting', 'retrofittings'],
+    ['workReplacement', 'replacement'],
+    ['workNewInstallation', 'new_installation'],
+    ['inspectedByName', 'inspected_by_name'],
+    ['inspectorSigImg', 'inspector_sig_img'],
+    ['witnessedByName', 'witnessed_by_name'],
+    ['witnessSigImg', 'witness_sig_img']
+  ];
+
   mapSupabaseToLocal(row) {
-    return {
-      id: row.id,
-      rnNo: row.rn_no,
-      installationNo: row.installation_no,
-      clientName: row.client_name,
-      locationAddress: row.location_address,
-      dateTime: row.date_time,
-      dateTimeDisplay: row.date_time ? new Date(row.date_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent',
-      voltageSystem: row.voltage_system,
-      mainBreaker: row.main_breaker,
-      groundingSystem: row.grounding_system,
-      estimateDistance: row.estimate_distance,
-      inspectedByName: row.inspected_by_name,
-      scopeOfWorks: row.scope_of_works,
-      photos: row.photo_attachments || {}
-    };
+    const data = { id: row.id };
+    for (const [localKey, column] of SupabaseService.FIELD_MAP) {
+      data[localKey] = row[column];
+    }
+    data.dateTimeDisplay = row.date_time ? new Date(row.date_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent';
+    data.photos = row.photo_attachments || {};
+    data.status = row.status;
+    return data;
   }
 
   mapLocalToSupabase(data) {
-    return {
+    const payload = {
       client_name: data.clientName || 'Unnamed Client',
       rn_no: data.rnNo || `RN-${Date.now()}`,
-      installation_no: data.installationNo || `INST-${Date.now()}`,
-      contact_no: data.contactNo,
-      scope_of_works: data.scopeOfWorks || 'Site Inspection',
-      location_address: data.locationAddress,
-      voltage_system: data.voltageSystem,
-      main_breaker: data.mainBreaker,
-      grounding_system: data.groundingSystem,
-      estimate_distance: data.estimateDistance,
-      inspected_by_name: data.inspectedByName,
-      inspector_sig_img: data.inspectorSigImg,
-      witnessed_by_name: data.witnessedByName,
-      witness_sig_img: data.witnessSigImg,
-      photo_attachments: data.photos || {},
-      status: data.status || 'READY_FOR_INSTALLATION'
+      installation_no: data.installationNo || `INST-${Date.now()}`
     };
+    for (const [localKey, column] of SupabaseService.FIELD_MAP) {
+      if (column === 'client_name' || column === 'rn_no' || column === 'installation_no') continue;
+      if (data[localKey] !== undefined) payload[column] = data[localKey];
+    }
+    payload.photo_attachments = data.photos || {};
+    payload.status = data.status || 'READY_FOR_INSTALLATION';
+    return payload;
   }
 
   subscribeToReadyQueue(callback) {
