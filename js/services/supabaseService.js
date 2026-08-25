@@ -72,6 +72,43 @@ class SupabaseService {
     }
   }
 
+  async fetchAllInspections() {
+    if (this.isConfigured()) {
+      try {
+        const { data, error } = await this.withTimeout(
+          this.client
+            .from('ocular_inspections')
+            .select('*')
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false }),
+          3000,
+          'Fetch all inspections'
+        );
+
+        if (error) throw error;
+        return { records: (data || []).map(item => this.mapSupabaseToLocal(item)), source: 'cloud' };
+      } catch (err) {
+        console.warn('[Synx Supabase] Falling back to local storage cache:', err.message);
+      }
+    }
+
+    try {
+      return { records: FormStorage.listReadyInstallations() || [], source: 'local' };
+    } catch (e) {
+      return { records: [], source: 'local' };
+    }
+  }
+
+  async archiveInspection(id) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    const { error } = await this.withTimeout(
+      this.client.from('ocular_inspections').update({ deleted_at: new Date().toISOString() }).eq('id', id),
+      3000,
+      'Archive inspection'
+    );
+    if (error) throw error;
+  }
+
   async saveOcularInspection(formData) {
     const localSaved = FormStorage.saveReadyInstallation(formData);
 
