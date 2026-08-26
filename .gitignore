@@ -21,3 +21,6 @@ npm-debug.log*
 
 # Local Claude Code session config (machine-specific permissions, not shared)
 .claude/
+
+# Supabase CLI local cache (machine-specific, not project state)
+supabase/.temp/

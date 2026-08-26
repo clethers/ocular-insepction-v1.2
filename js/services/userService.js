@@ -1,7 +1,12 @@
 /**
  * OIMS — User & RBAC Management Service
- * Manages user directory, role assignments, demo user accounts, and session permissions.
+ * Reads and mutates the real Supabase-backed employee directory
+ * (public.profiles / Supabase Auth) — there is no local/offline fallback
+ * here, since a user can't reach the Admin workspace at all without a
+ * working Supabase session (see AuthGuard).
  */
+
+import { supabaseService } from './supabaseService.js';
 
 export const USER_ROLES = {
   FIELD_INSPECTOR: 'field_inspector',
@@ -17,109 +22,7 @@ export const ROLE_LABELS = {
   [USER_ROLES.ADMIN]: 'System Administrator'
 };
 
-export const DEMO_ACCOUNTS = [
-  {
-    id: 'usr-admin-01',
-    email: 'admin.clara@ecoworks.ph',
-    fullName: 'Clara Santos, PE',
-    role: USER_ROLES.ADMIN,
-    department: 'IT & System Security',
-    initials: 'CS',
-    status: 'ACTIVE'
-  },
-  {
-    id: 'usr-mgr-01',
-    email: 'manager.alex@ecoworks.ph',
-    fullName: 'Alex Vance',
-    role: USER_ROLES.CUSTOMER_CARE_MANAGER,
-    department: 'Customer Care & Operations',
-    initials: 'AV',
-    status: 'ACTIVE'
-  },
-  {
-    id: 'usr-ree-01',
-    email: 'ree.reyna@ecoworks.ph',
-    fullName: 'Engr. Reyna Cruz, REE',
-    role: USER_ROLES.LEAD_ENGINEER,
-    department: 'Engineering Compliance',
-    initials: 'RC',
-    status: 'ACTIVE'
-  },
-  {
-    id: 'usr-inspector-01',
-    email: 'inspector.marco@ecoworks.ph',
-    fullName: 'Engr. Marco Santos, REE',
-    role: USER_ROLES.FIELD_INSPECTOR,
-    department: 'Field Inspections',
-    initials: 'MS',
-    status: 'ACTIVE'
-  }
-];
-
 class UserService {
-  constructor() {
-    this.storageKey = 'oims_users_directory';
-    this.initUsers();
-  }
-
-  initUsers() {
-    if (!localStorage.getItem(this.storageKey)) {
-      localStorage.setItem(this.storageKey, JSON.stringify(DEMO_ACCOUNTS));
-    }
-  }
-
-  getUsers() {
-    try {
-      const raw = localStorage.getItem(this.storageKey);
-      return raw ? JSON.parse(raw) : DEMO_ACCOUNTS;
-    } catch (e) {
-      return DEMO_ACCOUNTS;
-    }
-  }
-
-  saveUsers(users) {
-    localStorage.setItem(this.storageKey, JSON.stringify(users));
-  }
-
-  createUser(userData) {
-    const users = this.getUsers();
-    const newUser = {
-      id: 'usr-' + Date.now(),
-      email: userData.email,
-      fullName: userData.fullName,
-      role: userData.role || USER_ROLES.FIELD_INSPECTOR,
-      department: userData.department || 'Operations',
-      initials: this.getInitials(userData.fullName),
-      status: 'ACTIVE',
-      createdAt: new Date().toISOString()
-    };
-    users.unshift(newUser);
-    this.saveUsers(users);
-    return newUser;
-  }
-
-  updateUserRole(userId, newRole) {
-    const users = this.getUsers();
-    const user = users.find(u => u.id === userId || u.email === userId);
-    if (user) {
-      user.role = newRole;
-      this.saveUsers(users);
-      return true;
-    }
-    return false;
-  }
-
-  toggleUserStatus(userId) {
-    const users = this.getUsers();
-    const user = users.find(u => u.id === userId);
-    if (user) {
-      user.status = user.status === 'ACTIVE' ? 'DEACTIVATED' : 'ACTIVE';
-      this.saveUsers(users);
-      return user;
-    }
-    return null;
-  }
-
   getInitials(name) {
     if (!name) return 'US';
     const cleanName = String(name).replace(/^(Engr\.|Dr\.|Mr\.|Ms\.|PE)\s*/i, '').trim();
@@ -133,6 +36,94 @@ class UserService {
       return parts[0].substring(0, 2).toUpperCase();
     }
     return 'US';
+  }
+
+  mapProfileRow(row) {
+    return {
+      id: row.id,
+      email: row.email,
+      fullName: row.full_name,
+      role: row.role,
+      department: row.department,
+      status: row.status || 'ACTIVE',
+      mustChangePassword: !!row.must_change_password,
+      initials: this.getInitials(row.full_name),
+      createdAt: row.created_at
+    };
+  }
+
+  /**
+   * Fetches every employee profile. Throws on failure — callers are
+   * expected to catch and show a toast, same as everywhere else this app
+   * talks to Supabase.
+   */
+  async getUsers() {
+    const { data, error } = await supabaseService.withTimeout(
+      supabaseService.client.from('profiles').select('*').order('created_at', { ascending: false }),
+      5000,
+      'Fetch user directory'
+    );
+    if (error) throw error;
+    return (data || []).map((row) => this.mapProfileRow(row));
+  }
+
+  async updateUserRole(userId, newRole) {
+    const { error } = await supabaseService.withTimeout(
+      supabaseService.client.from('profiles').update({ role: newRole }).eq('id', userId),
+      5000,
+      'Update user role'
+    );
+    if (error) throw error;
+    return true;
+  }
+
+  async setUserStatus(userId, newStatus) {
+    const { error } = await supabaseService.withTimeout(
+      supabaseService.client.from('profiles').update({ status: newStatus }).eq('id', userId),
+      5000,
+      'Update user status'
+    );
+    if (error) throw error;
+    return true;
+  }
+
+  /**
+   * Provisions a brand-new employee account with a temp password via the
+   * admin-user-actions Edge Function (requires the service-role key, which
+   * only exists server-side). public.profiles is populated automatically
+   * by the on_auth_user_created DB trigger from the metadata sent here.
+   * Returns { userId, tempPassword } — the caller must show tempPassword
+   * to the admin exactly once; it is never retrievable again.
+   */
+  async createUser({ fullName, email, role, department }) {
+    const { data, error } = await supabaseService.withTimeout(
+      supabaseService.client.functions.invoke('admin-user-actions', {
+        body: { action: 'create_user', fullName, email, role, department }
+      }),
+      10000,
+      'Provision new user'
+    );
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data;
+  }
+
+  /**
+   * Sets a new temp password for an existing account via the same Edge
+   * Function and flags must_change_password so they're forced to pick
+   * their own password on next login. Returns { tempPassword }.
+   */
+  async resetUserPassword(userId) {
+    const { data, error } = await supabaseService.withTimeout(
+      supabaseService.client.functions.invoke('admin-user-actions', {
+        body: { action: 'reset_password', userId }
+      }),
+      10000,
+      'Reset user password'
+    );
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data;
   }
 }
 

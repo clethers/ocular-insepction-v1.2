@@ -17,7 +17,29 @@ export class AdminWorkspace {
     this.activeTab = 'dashboard'; // 'dashboard', 'users', 'clients', 'audit', 'masterdata', 'integrations'
     this.analyticsTimeframe = 'month';
     this.cloudMetrics = null;
+    this.usersList = null;
+    this.usersError = null;
+    this.usersLoading = false;
     this.loadMetrics();
+  }
+
+  async loadUsers() {
+    if (this.usersLoading) return;
+    this.usersLoading = true;
+    this.usersError = null;
+    try {
+      this.usersList = await userService.getUsers();
+    } catch (e) {
+      console.warn('[AdminWorkspace] Error fetching user directory:', e);
+      this.usersError = e?.message || 'Could not load the user directory.';
+    } finally {
+      this.usersLoading = false;
+      const stage = document.getElementById('admin-tab-stage');
+      if (stage && this.activeTab === 'users') {
+        stage.innerHTML = this.renderTabStage();
+        this.bindEvents();
+      }
+    }
   }
 
   async loadMetrics() {
@@ -79,6 +101,10 @@ export class AdminWorkspace {
       new ClientDirectory(stage, { canDelete: true }).render();
     }
 
+    if (this.activeTab === 'users' && !this.usersList && !this.usersLoading) {
+      this.loadUsers();
+    }
+
     this.bindEvents();
   }
 
@@ -100,20 +126,45 @@ export class AdminWorkspace {
 
   // TAB 1: User & RBAC Management
   renderUsersTab() {
-    const users = userService.getUsers();
+    const headerBlock = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <div>
+          <h3 style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary); margin: 0;">User Management & Employee Account Directory</h3>
+          <p style="font-size: 0.825rem; color: var(--text-muted); margin-top: 0.25rem;">Manage employee access, assign organizational roles, and enforce security status.</p>
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-add-user">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Provision New User
+        </button>
+      </div>
+    `;
+
+    if (this.usersLoading && !this.usersList) {
+      return `
+        <div class="form-card" style="padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-xl);">
+          ${headerBlock}
+          <div class="route-loading" style="min-height: 12rem;"><div class="route-loading-spinner" role="status" aria-label="Loading"></div></div>
+        </div>
+      `;
+    }
+
+    if (this.usersError) {
+      return `
+        <div class="form-card" style="padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-xl);">
+          ${headerBlock}
+          <div style="padding: 1rem 1.25rem; background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.3); border-radius: var(--radius-md); color: #F43F5E; font-size: 0.85rem; font-weight: 600;">
+            Could not load the user directory: ${this.usersError}
+          </div>
+          <button type="button" class="btn btn-secondary" id="btn-retry-users" style="margin-top: 1rem;">Retry</button>
+        </div>
+      `;
+    }
+
+    const users = this.usersList || [];
 
     return `
       <div class="form-card" style="padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-xl);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-          <div>
-            <h3 style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary); margin: 0;">User Management & Employee Account Directory</h3>
-            <p style="font-size: 0.825rem; color: var(--text-muted); margin-top: 0.25rem;">Manage employee access, assign organizational roles, and enforce security status.</p>
-          </div>
-          <button type="button" class="btn btn-primary" id="btn-add-user">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Provision New User
-          </button>
-        </div>
+        ${headerBlock}
 
         <div style="overflow-x: auto;">
           <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem;">
@@ -132,10 +183,15 @@ export class AdminWorkspace {
                 <tr style="border-bottom: 1px solid var(--border-color); transition: background 0.2s;" class="table-row-hover">
                   <td style="padding: 1rem;">
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
-                      <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--ecoworks-blue); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">${u.initials || 'US'}</div>
+                      <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--ecoworks-blue); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;">${u.initials || 'US'}</div>
                       <div>
                         <strong style="color: var(--text-primary); display: block;">${u.fullName}</strong>
-                        <span style="font-size: 0.725rem; color: var(--text-muted);">ID: ${u.id}</span>
+                        ${u.mustChangePassword ? `
+                          <span style="font-size: 0.675rem; color: #D97706; font-weight: 700; display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.15rem;">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+                            Pending password change
+                          </span>
+                        ` : `<span style="font-size: 0.725rem; color: var(--text-muted);">ID: ${u.id.slice(0, 8)}&hellip;</span>`}
                       </div>
                     </div>
                   </td>
@@ -154,8 +210,11 @@ export class AdminWorkspace {
                       ${u.status || 'ACTIVE'}
                     </span>
                   </td>
-                  <td style="padding: 1rem; text-align: right;">
-                    <button type="button" class="btn btn-secondary btn-toggle-user-status" data-userid="${u.id}" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;">
+                  <td style="padding: 1rem; text-align: right; white-space: nowrap;">
+                    <button type="button" class="btn btn-secondary btn-reset-password" data-userid="${u.id}" data-username="${u.fullName}" style="padding: 0.35rem 0.75rem; font-size: 0.75rem; margin-right: 0.4rem;">
+                      Reset Password
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-toggle-user-status" data-userid="${u.id}" data-currentstatus="${u.status || 'ACTIVE'}" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;">
                       ${u.status === 'ACTIVE' ? 'Deactivate' : 'Reactivate'}
                     </button>
                   </td>
@@ -163,6 +222,29 @@ export class AdminWorkspace {
               `).join('')}
             </tbody>
           </table>
+          ${users.length === 0 ? `<p style="text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.85rem;">No employee accounts found.</p>` : ''}
+        </div>
+      </div>
+
+      <!-- Temp Password Reveal Modal (shown once after create/reset) -->
+      <div id="temp-password-modal" style="display: none; position: fixed; inset: 0; z-index: 999; background: rgba(0,0,0,0.55); backdrop-filter: blur(6px); align-items: center; justify-content: center; padding: 1.5rem;">
+        <div class="form-card" style="max-width: 440px; width: 100%; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-xl); padding: 1.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <h3 id="temp-password-modal-title" style="font-weight: 800; font-size: 1.05rem; color: var(--text-primary); margin: 0;">Temporary Password Generated</h3>
+          </div>
+          <p id="temp-password-modal-subtitle" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;"></p>
+
+          <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; background: rgba(0, 174, 239, 0.08); border: 1px solid rgba(0, 174, 239, 0.3); border-radius: var(--radius-md); margin-bottom: 0.75rem;">
+            <code id="temp-password-value" style="flex: 1; font-size: 1rem; font-weight: 700; letter-spacing: 0.03em; color: var(--text-primary); word-break: break-all;"></code>
+            <button type="button" class="btn btn-secondary" id="btn-copy-temp-password" style="padding: 0.35rem 0.65rem; font-size: 0.75rem; flex-shrink: 0;">Copy</button>
+          </div>
+
+          <p style="font-size: 0.75rem; color: #D97706; font-weight: 600; margin-bottom: 1.25rem;">
+            This password is shown only once. Share it securely with the employee — they'll be required to set their own password on first login.
+          </p>
+
+          <button type="button" class="btn btn-primary" id="btn-close-temp-password-modal" style="width: 100%; justify-content: center;">Done</button>
         </div>
       </div>
     `;
@@ -535,6 +617,20 @@ export class AdminWorkspace {
     `;
   }
 
+  // Reveals a freshly generated temp password exactly once. Only exists in
+  // the DOM while activeTab === 'users' (see renderUsersTab()).
+  showTempPasswordModal({ title, subtitle, password }) {
+    const modal = this.container.querySelector('#temp-password-modal');
+    if (!modal) return;
+    const titleElem = this.container.querySelector('#temp-password-modal-title');
+    const subtitleElem = this.container.querySelector('#temp-password-modal-subtitle');
+    const valueElem = this.container.querySelector('#temp-password-value');
+    if (titleElem) titleElem.textContent = title;
+    if (subtitleElem) subtitleElem.textContent = subtitle;
+    if (valueElem) valueElem.textContent = password;
+    modal.style.display = 'flex';
+  }
+
   bindEvents() {
     // Analytics Timeframe Buttons (Day, Month, Year)
     const analyticsTfBtns = this.container.querySelectorAll('.btn-analytics-tf');
@@ -558,57 +654,185 @@ export class AdminWorkspace {
       });
     });
 
-    // Toggle user status
+    // Retry loading the user directory after a fetch error
+    const retryUsersBtn = this.container.querySelector('#btn-retry-users');
+    if (retryUsersBtn) {
+      retryUsersBtn.addEventListener('click', () => {
+        this.usersList = null;
+        this.usersError = null;
+        this.render();
+      });
+    }
+
+    // Toggle user status (activate / deactivate)
     const statusBtns = this.container.querySelectorAll('.btn-toggle-user-status');
     statusBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const userId = btn.getAttribute('data-userid');
-        userService.toggleUserStatus(userId);
-        auditLogService.logEvent({
-          category: AUDIT_CATEGORIES.ADMIN_RBAC,
-          eventType: 'USER_STATUS_TOGGLED',
-          description: `Admin toggled status for user ID ${userId}`,
-          severity: AUDIT_SEVERITY.WARNING
-        });
-        AppLayout.showToast('User status updated successfully.');
-        this.render();
+        const currentStatus = btn.getAttribute('data-currentstatus');
+        const newStatus = currentStatus === 'ACTIVE' ? 'DEACTIVATED' : 'ACTIVE';
+        btn.disabled = true;
+        try {
+          await userService.setUserStatus(userId, newStatus);
+          await auditLogService.logEvent({
+            category: AUDIT_CATEGORIES.ADMIN_RBAC,
+            eventType: 'USER_STATUS_TOGGLED',
+            description: `Admin set status to ${newStatus} for user ID ${userId}`,
+            severity: AUDIT_SEVERITY.WARNING,
+            resourceType: 'profiles',
+            resourceId: userId
+          });
+          AppLayout.showToast('User status updated successfully.');
+          this.usersList = null;
+          this.loadUsers();
+        } catch (err) {
+          btn.disabled = false;
+          AppLayout.showToast(`Could not update status: ${err.message || 'Unknown error'}`);
+        }
       });
     });
 
     // Update user role dropdown
     const roleSelects = this.container.querySelectorAll('.role-select-dropdown');
     roleSelects.forEach(select => {
-      select.addEventListener('change', (e) => {
+      const previousValue = select.value;
+      select.addEventListener('change', async (e) => {
         const userId = select.getAttribute('data-userid');
         const newRole = e.target.value;
-        userService.updateUserRole(userId, newRole);
-        auditLogService.logEvent({
-          category: AUDIT_CATEGORIES.ADMIN_RBAC,
-          eventType: 'USER_ROLE_UPDATED',
-          description: `Updated role for user ID ${userId} to ${newRole}`,
-          severity: AUDIT_SEVERITY.WARNING
-        });
-        AppLayout.showToast(`Updated user role to ${newRole}`);
+        select.disabled = true;
+        try {
+          await userService.updateUserRole(userId, newRole);
+          await auditLogService.logEvent({
+            category: AUDIT_CATEGORIES.ADMIN_RBAC,
+            eventType: 'USER_ROLE_UPDATED',
+            description: `Updated role for user ID ${userId} to ${newRole}`,
+            severity: AUDIT_SEVERITY.WARNING,
+            resourceType: 'profiles',
+            resourceId: userId
+          });
+          AppLayout.showToast(`Updated user role to ${newRole}`);
+          const cached = (this.usersList || []).find(u => u.id === userId);
+          if (cached) cached.role = newRole;
+        } catch (err) {
+          select.value = previousValue;
+          AppLayout.showToast(`Could not update role: ${err.message || 'Unknown error'}`);
+        } finally {
+          select.disabled = false;
+        }
       });
     });
 
-    // Add user button
+    // Reset Password button — admin sets a fresh temp password for an
+    // existing account; the account is forced to change it on next login.
+    const resetPwBtns = this.container.querySelectorAll('.btn-reset-password');
+    resetPwBtns.forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const userId = btn.getAttribute('data-userid');
+        const userName = btn.getAttribute('data-username') || 'this user';
+        if (!confirm(`Reset the password for ${userName}? Their current password will stop working immediately.`)) {
+          return;
+        }
+        btn.disabled = true;
+        const originalLabel = btn.textContent;
+        btn.textContent = 'Resetting…';
+        try {
+          const { tempPassword } = await userService.resetUserPassword(userId);
+          await auditLogService.logEvent({
+            category: AUDIT_CATEGORIES.ADMIN_RBAC,
+            eventType: 'USER_PASSWORD_RESET',
+            description: `Admin reset the password for ${userName} (forced change on next login).`,
+            severity: AUDIT_SEVERITY.CRITICAL,
+            resourceType: 'profiles',
+            resourceId: userId
+          });
+          // Refresh the list and re-render BEFORE revealing the modal —
+          // render() rebuilds #admin-tab-stage (including a hidden copy of
+          // this modal), so showing it first and refreshing after would
+          // wipe the visible modal out from under the admin mid-read.
+          try {
+            this.usersList = await userService.getUsers();
+          } catch (e) {
+            console.warn('[AdminWorkspace] Could not refresh user list after reset:', e);
+          }
+          this.render();
+          this.showTempPasswordModal({
+            title: 'Password Reset',
+            subtitle: `New temporary password for ${userName}. They must change it on next login.`,
+            password: tempPassword
+          });
+        } catch (err) {
+          AppLayout.showToast(`Could not reset password: ${err.message || 'Unknown error'}`);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = originalLabel;
+        }
+      });
+    });
+
+    // Add user button — provisions a real Supabase Auth account with a
+    // temp password, forced to change it on first login.
     const addUserBtn = this.container.querySelector('#btn-add-user');
     if (addUserBtn) {
-      addUserBtn.addEventListener('click', () => {
-        const name = prompt('Enter New Employee Full Name (e.g. Engr. Daniel Cruz):');
+      addUserBtn.addEventListener('click', async () => {
+        const name = (prompt('Enter New Employee Full Name (e.g. Engr. Daniel Cruz):') || '').trim();
         if (!name) return;
-        const email = prompt('Enter Employee Email Address:');
+        const email = (prompt('Enter Employee Email Address:') || '').trim();
         if (!email) return;
-        const newUser = userService.createUser({ fullName: name, email: email, role: USER_ROLES.FIELD_INSPECTOR });
-        auditLogService.logEvent({
-          category: AUDIT_CATEGORIES.ADMIN_RBAC,
-          eventType: 'USER_ACCOUNT_CREATED',
-          description: `Provisioned new user account for ${name} (${email})`,
-          severity: AUDIT_SEVERITY.INFO
-        });
-        AppLayout.showToast(`Provisioned account for ${name}`);
-        this.render();
+
+        addUserBtn.disabled = true;
+        try {
+          const { tempPassword } = await userService.createUser({
+            fullName: name,
+            email,
+            role: USER_ROLES.FIELD_INSPECTOR,
+            department: 'Operations'
+          });
+          await auditLogService.logEvent({
+            category: AUDIT_CATEGORIES.ADMIN_RBAC,
+            eventType: 'USER_ACCOUNT_CREATED',
+            description: `Provisioned new user account for ${name} (${email}).`,
+            severity: AUDIT_SEVERITY.INFO,
+            resourceType: 'profiles'
+          });
+          try {
+            this.usersList = await userService.getUsers();
+          } catch (e) {
+            console.warn('[AdminWorkspace] Could not refresh user list after provisioning:', e);
+          }
+          this.render();
+          this.showTempPasswordModal({
+            title: 'Account Provisioned',
+            subtitle: `Temporary password for ${name} (${email}). They must set their own password on first login.`,
+            password: tempPassword
+          });
+        } catch (err) {
+          AppLayout.showToast(`Could not provision account: ${err.message || 'Unknown error'}`);
+        } finally {
+          addUserBtn.disabled = false;
+        }
+      });
+    }
+
+    // Temp password reveal modal — Copy / Done
+    const tempPwModal = this.container.querySelector('#temp-password-modal');
+    const copyBtn = this.container.querySelector('#btn-copy-temp-password');
+    const closeBtn = this.container.querySelector('#btn-close-temp-password-modal');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        const valueElem = this.container.querySelector('#temp-password-value');
+        const value = valueElem ? valueElem.textContent : '';
+        try {
+          await navigator.clipboard.writeText(value);
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+        } catch (err) {
+          AppLayout.showToast('Could not copy automatically — please select and copy manually.');
+        }
+      });
+    }
+    if (closeBtn && tempPwModal) {
+      closeBtn.addEventListener('click', () => {
+        tempPwModal.style.display = 'none';
       });
     }
 
