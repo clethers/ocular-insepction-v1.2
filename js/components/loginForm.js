@@ -180,7 +180,8 @@ export class LoginForm {
             email: profile.email,
             fullName: profile.full_name,
             role: profile.role,
-            department: profile.department
+            department: profile.department,
+            mustChangePassword: !!profile.must_change_password
           };
 
           // Determine target landing URL

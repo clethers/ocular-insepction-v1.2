@@ -63,7 +63,8 @@ export class AuthGuard {
       fullName: profile.full_name,
       role: profile.role,
       department: profile.department,
-      status: profile.status
+      status: profile.status,
+      mustChangePassword: !!profile.must_change_password
     };
   }
 

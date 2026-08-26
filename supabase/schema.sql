@@ -23,26 +23,29 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- Ensure columns exist for backwards compatibility on existing tables
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS department VARCHAR(255) DEFAULT 'Operations';
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'ACTIVE';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT false;
 
 -- Trigger to automatically create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.profiles (id, email, full_name, role, department, status)
+    INSERT INTO public.profiles (id, email, full_name, role, department, status, must_change_password)
     VALUES (
         NEW.id,
         NEW.email,
         COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
         COALESCE(NEW.raw_user_meta_data->>'role', 'field_inspector'),
         COALESCE(NEW.raw_user_meta_data->>'department', 'Operations'),
-        COALESCE(NEW.raw_user_meta_data->>'status', 'ACTIVE')
+        COALESCE(NEW.raw_user_meta_data->>'status', 'ACTIVE'),
+        COALESCE((NEW.raw_user_meta_data->>'must_change_password')::boolean, false)
     )
     ON CONFLICT (id) DO UPDATE SET
         email = EXCLUDED.email,
         full_name = EXCLUDED.full_name,
         role = EXCLUDED.role,
         department = EXCLUDED.department,
-        status = EXCLUDED.status;
+        status = EXCLUDED.status,
+        must_change_password = EXCLUDED.must_change_password;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -277,8 +280,33 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Profiles Policies
 CREATE POLICY "Allow users read inspector profiles" ON public.profiles FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Allow users update own profile" ON public.profiles;
 CREATE POLICY "Allow admin manage all profiles" ON public.profiles FOR ALL USING (public.get_user_role() = 'admin');
+
+-- Self-update is scoped to a person's own row, with role/status/email
+-- changes blocked for non-admins via a trigger (see
+-- prevent_self_privilege_escalation below) rather than relying on RLS alone.
+CREATE POLICY "Allow users update own profile" ON public.profiles
+  FOR UPDATE USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+CREATE OR REPLACE FUNCTION public.prevent_self_privilege_escalation()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF public.get_user_role() <> 'admin' THEN
+        IF NEW.role IS DISTINCT FROM OLD.role
+           OR NEW.status IS DISTINCT FROM OLD.status
+           OR NEW.email IS DISTINCT FROM OLD.email THEN
+            RAISE EXCEPTION 'Not authorized to change role, status, or email on your own profile.';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trigger_prevent_self_privilege_escalation ON public.profiles;
+CREATE TRIGGER trigger_prevent_self_privilege_escalation
+    BEFORE UPDATE ON public.profiles
+    FOR EACH ROW EXECUTE FUNCTION public.prevent_self_privilege_escalation();
 
 -- Ocular Inspections Policies
 CREATE POLICY "Allow read ocular inspections" ON public.ocular_inspections FOR SELECT USING (true);

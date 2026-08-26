@@ -7,6 +7,7 @@
 import { AuthGuard } from './components/authGuard.js';
 import { AppLayout } from './components/appLayout.js';
 import { LoginForm } from './components/loginForm.js';
+import { SetPasswordForm } from './components/setPasswordForm.js';
 import { InspectorWorkspace } from './components/inspectorWorkspace.js';
 import { ManagerWorkspace } from './components/managerWorkspace.js';
 import { AdminWorkspace } from './components/adminWorkspace.js';
@@ -61,6 +62,23 @@ export class Router {
           this.renderLogin();
         }
         return;
+      }
+
+      // 1b. Forced Password Change Gate — must resolve before any protected
+      // route, regardless of what was requested. Temp-password accounts
+      // (admin-created, must_change_password=true) can't reach anything else.
+      if (user.mustChangePassword) {
+        if (cleanPath !== '/set-password') {
+          window.history.replaceState({}, '', '/set-password');
+        }
+        this.renderSetPassword(user);
+        return;
+      }
+      if (cleanPath === '/set-password') {
+        // Flag already cleared (e.g. back button after completing it) — move on.
+        const defaultPath = this.getDefaultPathForRole(user.role);
+        window.history.replaceState({}, '', defaultPath);
+        return this.handleRoute(defaultPath);
       }
 
       // 2. Role-Based Route Protection
@@ -130,6 +148,15 @@ export class Router {
       appElem.innerHTML = '';
       const loginForm = new LoginForm(appElem);
       loginForm.render();
+    }
+  }
+
+  static renderSetPassword(user) {
+    const appElem = document.getElementById('app');
+    if (appElem) {
+      appElem.innerHTML = '';
+      const setPasswordForm = new SetPasswordForm(appElem, user);
+      setPasswordForm.render();
     }
   }
 
