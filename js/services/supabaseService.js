@@ -1,13 +1,13 @@
 /**
- * Synx Portal — Supabase Integration & Hybrid Cloud Data Service
+ * OIMS — Supabase Integration & Hybrid Cloud Data Service
  */
 
 import { FormStorage } from '../components/formStorage.js';
 
 class SupabaseService {
   constructor() {
-    this.supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || localStorage.getItem('synx_supabase_url') || '';
-    this.supabaseKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || localStorage.getItem('synx_supabase_key') || '';
+    this.supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || localStorage.getItem('oims_supabase_url') || '';
+    this.supabaseKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || localStorage.getItem('oims_supabase_key') || '';
     this.client = null;
     this.initClient();
   }
@@ -16,9 +16,9 @@ class SupabaseService {
     if (this.supabaseUrl && this.supabaseKey && window.supabase) {
       try {
         this.client = window.supabase.createClient(this.supabaseUrl, this.supabaseKey);
-        console.log('[Synx Supabase] Connected to live Supabase backend instance:', this.supabaseUrl);
+        console.log('[OIMS Supabase] Connected to live Supabase backend instance:', this.supabaseUrl);
       } catch (err) {
-        console.warn('[Synx Supabase] Initialization error:', err);
+        console.warn('[OIMS Supabase] Initialization error:', err);
       }
     }
   }
@@ -60,7 +60,7 @@ class SupabaseService {
           return data.map(item => this.mapSupabaseToLocal(item));
         }
       } catch (err) {
-        console.warn('[Synx Supabase] Falling back to local storage cache:', err.message);
+        console.warn('[OIMS Supabase] Falling back to local storage cache:', err.message);
       }
     }
 
@@ -88,7 +88,7 @@ class SupabaseService {
         if (error) throw error;
         return { records: (data || []).map(item => this.mapSupabaseToLocal(item)), source: 'cloud' };
       } catch (err) {
-        console.warn('[Synx Supabase] Falling back to local storage cache:', err.message);
+        console.warn('[OIMS Supabase] Falling back to local storage cache:', err.message);
       }
     }
 
@@ -121,9 +121,9 @@ class SupabaseService {
           .select();
 
         if (error) throw error;
-        console.log('[Synx Supabase] Saved ocular inspection to Supabase cloud:', data);
+        console.log('[OIMS Supabase] Saved ocular inspection to Supabase cloud:', data);
       } catch (err) {
-        console.warn('[Synx Supabase] Saved locally. Sync pending to Supabase:', err.message);
+        console.warn('[OIMS Supabase] Saved locally. Sync pending to Supabase:', err.message);
       }
     }
 
@@ -152,9 +152,9 @@ class SupabaseService {
           .insert([payload]);
 
         if (error) throw error;
-        console.log('[Synx Supabase] Saved installation record to Supabase cloud:', data);
+        console.log('[OIMS Supabase] Saved installation record to Supabase cloud:', data);
       } catch (err) {
-        console.warn('[Synx Supabase] Saved locally. Sync pending:', err.message);
+        console.warn('[OIMS Supabase] Saved locally. Sync pending:', err.message);
       }
     }
 
@@ -324,12 +324,12 @@ class SupabaseService {
         return this.client
           .channel('public:ocular_inspections')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'ocular_inspections' }, payload => {
-            console.log('[Synx Supabase Realtime] Event received:', payload);
+            console.log('[OIMS Supabase Realtime] Event received:', payload);
             if (callback) callback(payload);
           })
           .subscribe();
       } catch (err) {
-        console.warn('[Synx Supabase Realtime] Could not subscribe:', err);
+        console.warn('[OIMS Supabase Realtime] Could not subscribe:', err);
       }
     }
     return null;
@@ -360,7 +360,7 @@ class SupabaseService {
           handoversCount: installed
         };
       } catch (err) {
-        console.warn('[Synx Supabase] Could not fetch metrics from Supabase:', err.message);
+        console.warn('[OIMS Supabase] Could not fetch metrics from Supabase:', err.message);
       }
     }
 

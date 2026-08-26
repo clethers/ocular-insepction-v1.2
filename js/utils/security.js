@@ -1,5 +1,5 @@
 /**
- * Security Utilities Module for Synx Portal
+ * Security Utilities Module for OIMS
  * Provides XSS HTML entity escaping and Base64 payload validation.
  * Implements security patterns from api-security-best-practices skill.
  */
@@ -54,7 +54,7 @@ export function isSafeRedirectUrl(url) {
  * Enforces a 5-minute security lockout after 5 consecutive failed attempts.
  */
 export class LoginRateLimiter {
-  static KEY = 'synx_login_attempts';
+  static KEY = 'oims_login_attempts';
   static MAX_ATTEMPTS = 5;
   static LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
 

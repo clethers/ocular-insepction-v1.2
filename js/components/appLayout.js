@@ -1,5 +1,5 @@
 /**
- * Synx Field App - Shared Layout Component for Multi-Page Application (MPA / SPA Router)
+ * OIMS Field App - Shared Layout Component for Multi-Page Application (MPA / SPA Router)
  * Manages dynamic role-aware sidebar navigation, top header, profile menu, and toast notifications.
  */
 
@@ -16,11 +16,11 @@ export class AppLayout {
    * @param {string} pageTitle - Title displayed in the top header
    * @returns {HTMLElement} The main content container element (#main-content-view)
    */
-  static async init(activePath = '/ocular', pageTitle = 'Synx Portal') {
+  static async init(activePath = '/ocular', pageTitle = 'OIMS') {
     const appElem = document.getElementById('app');
     if (!appElem) return null;
 
-    const isCollapsed = localStorage.getItem('synx_sidebar_collapsed') !== 'false';
+    const isCollapsed = localStorage.getItem('oims_sidebar_collapsed') !== 'false';
     const user = (await AuthGuard.getSessionUser()) || {
       fullName: 'Engr. Marco Santos, REE',
       email: 'inspector.marco@ecoworks.ph',
@@ -52,7 +52,7 @@ export class AppLayout {
           <div class="sidebar-brand">
             <img src="${logoUrl}" alt="EcoWorks Logo" class="sidebar-logo-img" />
             <div class="sidebar-brand-info">
-              <h1 class="sidebar-brand-title">Synx</h1>
+              <h1 class="sidebar-brand-title">OIMS</h1>
             </div>
           </div>
 
@@ -242,7 +242,7 @@ export class AppLayout {
       toggleBtn.addEventListener('click', () => {
         sidebar.classList.toggle('collapsed');
         const collapsed = sidebar.classList.contains('collapsed');
-        localStorage.setItem('synx_sidebar_collapsed', collapsed ? 'true' : 'false');
+        localStorage.setItem('oims_sidebar_collapsed', collapsed ? 'true' : 'false');
       });
     }
 
@@ -287,7 +287,7 @@ export class AppLayout {
           try {
             await supabaseService.withTimeout(supabaseService.client.auth.signOut(), 3000, 'Sign out');
           } catch (err) {
-            console.warn('[Synx AppLayout] signOut failed during logout:', err.message);
+            console.warn('[OIMS AppLayout] signOut failed during logout:', err.message);
           }
         }
         this.showToast('Logged out of session. Redirecting to login...');

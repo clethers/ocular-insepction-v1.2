@@ -1,5 +1,5 @@
 /**
- * ReadyList Component - Synx Field App
+ * ReadyList Component - OIMS Field App
  * Displays completed & approved Ocular Inspections ready for EV Charger Installation execution.
  */
 
@@ -29,13 +29,13 @@ export class ReadyList {
     try {
       cloudReadyItems = (await supabaseService.fetchReadyInspections()) || [];
     } catch (e) {
-      console.warn('[Synx] Could not fetch cloud inspections:', e);
+      console.warn('[OIMS] Could not fetch cloud inspections:', e);
     }
 
     try {
       savedReadyItems = FormStorage.listReadyInstallations() || [];
     } catch (e) {
-      console.warn('[Synx] Could not fetch saved installations:', e);
+      console.warn('[OIMS] Could not fetch saved installations:', e);
     }
 
     const readyItems = [...cloudReadyItems, ...savedReadyItems, ...READY_INSTALLATIONS_PRESETS];
@@ -222,7 +222,7 @@ export class ReadyList {
 
     // Live Realtime Subscription
     supabaseService.subscribeToReadyQueue(() => {
-      console.log('[Synx] Realtime queue update received. Refreshing list...');
+      console.log('[OIMS] Realtime queue update received. Refreshing list...');
       this.render();
     });
 

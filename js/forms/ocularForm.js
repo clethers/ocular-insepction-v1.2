@@ -1,5 +1,5 @@
 /**
- * Ocular Inspection Form Handler for Synx
+ * Ocular Inspection Form Handler for OIMS
  * Renders interactive UI form matching physical EcoWorks inspection form
  */
 
@@ -463,7 +463,7 @@ export class OcularForm {
                     <span class="photo-subtext">Required</span>
                   </div>
                   <div class="photo-preview-container" style="display:none;">
-                    <img class="photo-preview-img" id="prev_proposed_layout" src="" alt="Proposed Layout" />
+                    <img class="photo-preview-img" loading="lazy" id="prev_proposed_layout" src="" alt="Proposed Layout" />
                     <div class="photo-reupload-overlay">
                       <button type="button" class="btn-reupload-photo" data-photo-id="proposed_layout">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
@@ -486,7 +486,7 @@ export class OcularForm {
                     <span class="photo-subtext">Required</span>
                   </div>
                   <div class="photo-preview-container" style="display:none;">
-                    <img class="photo-preview-img" id="prev_tapping_point" src="" alt="Tapping Point" />
+                    <img class="photo-preview-img" loading="lazy" id="prev_tapping_point" src="" alt="Tapping Point" />
                     <div class="photo-reupload-overlay">
                       <button type="button" class="btn-reupload-photo" data-photo-id="tapping_point">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
@@ -509,7 +509,7 @@ export class OcularForm {
                     <span class="photo-subtext">Required</span>
                   </div>
                   <div class="photo-preview-container" style="display:none;">
-                    <img class="photo-preview-img" id="prev_wiring_conduit" src="" alt="Wiring/Conduit Layout" />
+                    <img class="photo-preview-img" loading="lazy" id="prev_wiring_conduit" src="" alt="Wiring/Conduit Layout" />
                     <div class="photo-reupload-overlay">
                       <button type="button" class="btn-reupload-photo" data-photo-id="wiring_conduit">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
@@ -532,7 +532,7 @@ export class OcularForm {
                     <span class="photo-subtext">Required</span>
                   </div>
                   <div class="photo-preview-container" style="display:none;">
-                    <img class="photo-preview-img" id="prev_ev_charging_location" src="" alt="EV Charging Location" />
+                    <img class="photo-preview-img" loading="lazy" id="prev_ev_charging_location" src="" alt="EV Charging Location" />
                     <div class="photo-reupload-overlay">
                       <button type="button" class="btn-reupload-photo" data-photo-id="ev_charging_location">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>

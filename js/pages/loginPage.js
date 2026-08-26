@@ -1,5 +1,5 @@
 /**
- * Synx Portal - Login Page Entry Point (MPA)
+ * OIMS - Login Page Entry Point (MPA)
  */
 
 import { LoginForm } from '../components/loginForm.js';

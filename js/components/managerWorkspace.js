@@ -1,5 +1,5 @@
 /**
- * Synx Portal — Customer Care & Operations Manager Workspace Component (`managerWorkspace.js`)
+ * OIMS — Customer Care & Operations Manager Workspace Component (`managerWorkspace.js`)
  * Features Workload Dispatch, Audit QA Approvals, 360 Client Search, Field Calendar, Tickets, Materials, SMS Logs, and Operations KPIs.
  */
 

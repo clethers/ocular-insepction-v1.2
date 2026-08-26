@@ -1,8 +1,8 @@
 /**
- * FormStorage module for local autosave and draft persistence in Synx
+ * FormStorage module for local autosave and draft persistence in OIMS
  */
 
-const STORAGE_PREFIX = 'synx_draft_';
+const STORAGE_PREFIX = 'oims_draft_';
 
 export class FormStorage {
   static saveDraft(formId, data) {
@@ -59,7 +59,7 @@ export class FormStorage {
         updatedAt: new Date().toISOString(),
         ...data
       };
-      localStorage.setItem(`synx_ready_${id}`, JSON.stringify(payload));
+      localStorage.setItem(`oims_ready_${id}`, JSON.stringify(payload));
       return true;
     } catch (e) {
       console.error('Failed to save ready installation', e);
@@ -71,7 +71,7 @@ export class FormStorage {
     const readyItems = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key.startsWith('synx_ready_')) {
+      if (key.startsWith('oims_ready_')) {
         try {
           const val = JSON.parse(localStorage.getItem(key));
           readyItems.push(val);

@@ -1,5 +1,5 @@
 /**
- * Sample dataset definitions for Synx
+ * Sample dataset definitions for OIMS
  * (Seeded data cleared for production live database use)
  */
 

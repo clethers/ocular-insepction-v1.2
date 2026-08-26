@@ -1,5 +1,5 @@
 /**
- * Installation Form Handler for Synx
+ * Installation Form Handler for OIMS
  * Post-inspection execution, electrical commissioning, asset serial numbers & sign-off.
  */
 
@@ -198,7 +198,7 @@ export class InstallationForm {
                   <span class="photo-subtext">Required</span>
                 </div>
                 <div class="photo-preview-container" style="display:none;">
-                  <img class="photo-preview-img" id="prev_power_supply" src="" alt="Power Supply Point" />
+                  <img class="photo-preview-img" loading="lazy" id="prev_power_supply" src="" alt="Power Supply Point" />
                   <div class="photo-reupload-overlay">
                     <button type="button" class="btn-reupload-photo" data-photo-id="power_supply">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
@@ -221,7 +221,7 @@ export class InstallationForm {
                   <span class="photo-subtext">Required</span>
                 </div>
                 <div class="photo-preview-container" style="display:none;">
-                  <img class="photo-preview-img" id="prev_wall_connector" src="" alt="Connections in Wall Connector" />
+                  <img class="photo-preview-img" loading="lazy" id="prev_wall_connector" src="" alt="Connections in Wall Connector" />
                   <div class="photo-reupload-overlay">
                     <button type="button" class="btn-reupload-photo" data-photo-id="wall_connector">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
@@ -244,7 +244,7 @@ export class InstallationForm {
                   <span class="photo-subtext">Required</span>
                 </div>
                 <div class="photo-preview-container" style="display:none;">
-                  <img class="photo-preview-img" id="prev_finished_power" src="" alt="Finished Installation with Power On" />
+                  <img class="photo-preview-img" loading="lazy" id="prev_finished_power" src="" alt="Finished Installation with Power On" />
                   <div class="photo-reupload-overlay">
                     <button type="button" class="btn-reupload-photo" data-photo-id="finished_power">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
@@ -267,7 +267,7 @@ export class InstallationForm {
                   <span class="photo-subtext">Required</span>
                 </div>
                 <div class="photo-preview-container" style="display:none;">
-                  <img class="photo-preview-img" id="prev_wc_tsn" src="" alt="WC TSN Side" />
+                  <img class="photo-preview-img" loading="lazy" id="prev_wc_tsn" src="" alt="WC TSN Side" />
                   <div class="photo-reupload-overlay">
                     <button type="button" class="btn-reupload-photo" data-photo-id="wc_tsn">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
@@ -290,7 +290,7 @@ export class InstallationForm {
                   <span class="photo-subtext">Required</span>
                 </div>
                 <div class="photo-preview-container" style="display:none;">
-                  <img class="photo-preview-img" id="prev_breaker_leakage" src="" alt="Breaker and Leakage Protector" />
+                  <img class="photo-preview-img" loading="lazy" id="prev_breaker_leakage" src="" alt="Breaker and Leakage Protector" />
                   <div class="photo-reupload-overlay">
                     <button type="button" class="btn-reupload-photo" data-photo-id="breaker_leakage">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
@@ -313,7 +313,7 @@ export class InstallationForm {
                   <span class="photo-subtext">Required</span>
                 </div>
                 <div class="photo-preview-container" style="display:none;">
-                  <img class="photo-preview-img" id="prev_installer_uniform" src="" alt="Installer Uniform with WC" />
+                  <img class="photo-preview-img" loading="lazy" id="prev_installer_uniform" src="" alt="Installer Uniform with WC" />
                   <div class="photo-reupload-overlay">
                     <button type="button" class="btn-reupload-photo" data-photo-id="installer_uniform">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
@@ -336,7 +336,7 @@ export class InstallationForm {
                   <span class="photo-subtext">Required</span>
                 </div>
                 <div class="photo-preview-container" style="display:none;">
-                  <img class="photo-preview-img" id="prev_parking_space" src="" alt="Parking Space with WC" />
+                  <img class="photo-preview-img" loading="lazy" id="prev_parking_space" src="" alt="Parking Space with WC" />
                   <div class="photo-reupload-overlay">
                     <button type="button" class="btn-reupload-photo" data-photo-id="parking_space">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
@@ -730,7 +730,7 @@ export class InstallationForm {
         const clientName = (data.clientSignerName || data.installClientName || data.clientName || 'Client').replace(/[^a-zA-Z0-9_\-]/g, '_');
         
         // Set document title to controlled tracking number for default PDF file name
-        document.title = `ECO-SYN-HANDOVER-${rnNo}_${clientName}`;
+        document.title = `ECO-OIMS-HANDOVER-${rnNo}_${clientName}`;
 
         window.print();
 
@@ -804,7 +804,7 @@ export class InstallationForm {
         </div>
         <div class="cert-doc-meta">
           <div class="cert-badge">✓ HANDOVER CERTIFIED</div><br/>
-          <strong>DOC REF:</strong> ECO-SYN-HANDOVER-${data.rnNo || '101'}<br/>
+          <strong>DOC REF:</strong> ECO-OIMS-HANDOVER-${data.rnNo || '101'}<br/>
           <strong>DATE ISSUED:</strong> ${data.dateInstalled ? new Date(data.dateInstalled).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
         </div>
       </div>
@@ -935,7 +935,7 @@ export class InstallationForm {
       <!-- Footer Notice -->
       <div class="cert-footer-notice">
         <span>&copy; 2026 EcoWorks Building Systems Corporation. Official Commissioning Certificate.</span>
-        <span>Generated via Synx Portal v1.0 | Handover Docket</span>
+        <span>Generated via OIMS v1.0 | Handover Docket</span>
       </div>
     `;
   }

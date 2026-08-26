@@ -1,5 +1,5 @@
 /**
- * Synx Portal — Equipment Master Data & Form Presets Service
+ * OIMS — Equipment Master Data & Form Presets Service
  * Manages standard dropdown options for EV Chargers, Breaker Brands, Conduits, and Scope Presets.
  */
 
@@ -35,7 +35,7 @@ export const DEFAULT_MASTER_DATA = {
 
 class MasterDataService {
   constructor() {
-    this.storageKey = 'synx_master_equipment_catalog';
+    this.storageKey = 'oims_master_equipment_catalog';
     this.initCatalog();
   }
 

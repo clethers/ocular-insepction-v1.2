@@ -1,5 +1,5 @@
 /**
- * Synx Portal — User & RBAC Management Service
+ * OIMS — User & RBAC Management Service
  * Manages user directory, role assignments, demo user accounts, and session permissions.
  */
 
@@ -58,7 +58,7 @@ export const DEMO_ACCOUNTS = [
 
 class UserService {
   constructor() {
-    this.storageKey = 'synx_users_directory';
+    this.storageKey = 'oims_users_directory';
     this.initUsers();
   }
 

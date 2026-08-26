@@ -1,7 +1,7 @@
 # 📌 Parked Plan: Saved Drafts & Form History Hub Enhancement
 
 > **Status:** Parked for future execution  
-> **Target Module:** Synx Portal — Form History & Draft Management (`history.html` / `historyPage.js`)
+> **Target Module:** OIMS — Form History & Draft Management (`history.html` / `historyPage.js`)
 
 ---
 

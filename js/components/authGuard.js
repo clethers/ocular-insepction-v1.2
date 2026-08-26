@@ -30,7 +30,7 @@ export class AuthGuard {
       );
       session = result.data.session;
     } catch (err) {
-      console.warn('[Synx AuthGuard] Could not get session:', err.message);
+      console.warn('[OIMS AuthGuard] Could not get session:', err.message);
       return null;
     }
 
@@ -43,7 +43,7 @@ export class AuthGuard {
     try {
       profile = await this.getProfile(session.user.id);
     } catch (err) {
-      console.warn('[Synx AuthGuard] Could not verify profile, denying this check:', err.message);
+      console.warn('[OIMS AuthGuard] Could not verify profile, denying this check:', err.message);
       return null;
     }
 
@@ -51,7 +51,7 @@ export class AuthGuard {
       try {
         await supabaseService.withTimeout(supabaseService.client.auth.signOut(), 3000, 'Sign out');
       } catch (err) {
-        console.warn('[Synx AuthGuard] signOut failed during forced logout:', err.message);
+        console.warn('[OIMS AuthGuard] signOut failed during forced logout:', err.message);
       }
       profileCache = null;
       return null;
@@ -100,6 +100,17 @@ export class AuthGuard {
 
     profileCache = { userId, profile: data, fetchedAt: Date.now() };
     return data;
+  }
+
+  /**
+   * Drops the cached profiles row so the next getSessionUser()/getProfile()
+   * call re-fetches from Supabase. Callers that mutate the current user's
+   * own profile row directly (e.g. clearing must_change_password) must call
+   * this before navigating, otherwise the route guard keeps acting on the
+   * stale cached copy for up to PROFILE_CACHE_TTL_MS.
+   */
+  static invalidateProfileCache() {
+    profileCache = null;
   }
 
   /**

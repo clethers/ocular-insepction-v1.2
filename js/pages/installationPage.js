@@ -1,5 +1,5 @@
 /**
- * Synx Portal - EV Charger Installation & Commissioning Form Page Entry Point (MPA)
+ * OIMS - EV Charger Installation & Commissioning Form Page Entry Point (MPA)
  */
 
 import { AppLayout } from '../components/appLayout.js';
@@ -14,11 +14,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (container) {
     // Check if data passed via URL query parameters or sessionStorage
     let selectedData = null;
-    const rawSession = sessionStorage.getItem('synx_selected_installation');
+    const rawSession = sessionStorage.getItem('oims_selected_installation');
     if (rawSession) {
       try {
         selectedData = JSON.parse(rawSession);
-        sessionStorage.removeItem('synx_selected_installation');
+        sessionStorage.removeItem('oims_selected_installation');
       } catch (e) {
         selectedData = null;
       }

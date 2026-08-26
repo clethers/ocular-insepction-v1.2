@@ -1,17 +1,18 @@
 /**
- * Synx Portal — Unified SPA Router (HTML5 History API)
+ * OIMS — Unified SPA Router (HTML5 History API)
  * Provides clean, extensionless, slash-based URL routing (/ocular/ready, /manager, /admin, /login)
  * with zero page reloads, role permission enforcement, and browser back/forward popstate support.
  */
 
 import { AuthGuard } from './components/authGuard.js';
 import { AppLayout } from './components/appLayout.js';
-import { LoginForm } from './components/loginForm.js';
-import { SetPasswordForm } from './components/setPasswordForm.js';
-import { InspectorWorkspace } from './components/inspectorWorkspace.js';
-import { ManagerWorkspace } from './components/managerWorkspace.js';
-import { AdminWorkspace } from './components/adminWorkspace.js';
 import { USER_ROLES } from './services/userService.js';
+
+// LoginForm / SetPasswordForm / InspectorWorkspace / ManagerWorkspace /
+// AdminWorkspace are intentionally NOT imported statically here. Each is
+// its own Vite chunk; on any given page load a user only ever needs one of
+// them (e.g. a field inspector never needs AdminWorkspace's code), so each
+// render*() method below dynamically import()s only the component it needs.
 
 export class Router {
   static init() {
@@ -49,7 +50,7 @@ export class Router {
       // 1. Unauthenticated Route Guard
       if (!user && cleanPath !== '/login') {
         window.history.replaceState({}, '', '/login');
-        this.renderLogin();
+        await this.renderLogin();
         return;
       }
 
@@ -59,7 +60,7 @@ export class Router {
           window.history.replaceState({}, '', defaultPath);
           await this.handleRoute(defaultPath);
         } else {
-          this.renderLogin();
+          await this.renderLogin();
         }
         return;
       }
@@ -71,7 +72,7 @@ export class Router {
         if (cleanPath !== '/set-password') {
           window.history.replaceState({}, '', '/set-password');
         }
-        this.renderSetPassword(user);
+        await this.renderSetPassword(user);
         return;
       }
       if (cleanPath === '/set-password') {
@@ -105,7 +106,7 @@ export class Router {
       // Default route: Inspector Workspace (/ocular, /ocular/ready, /ocular/installation, /ocular/history)
       await this.renderInspectorWorkspace(cleanPath);
     } catch (routeErr) {
-      console.error('[Synx Router Error]', routeErr);
+      console.error('[OIMS Router Error]', routeErr);
       this.renderError(routeErr);
     }
   }
@@ -142,22 +143,43 @@ export class Router {
     }
   }
 
-  static renderLogin() {
-    const appElem = document.getElementById('app');
-    if (appElem) {
-      appElem.innerHTML = '';
-      const loginForm = new LoginForm(appElem);
-      loginForm.render();
-    }
+  /**
+   * Renders a small centered spinner into `container` synchronously, so a
+   * dynamic import() in flight doesn't leave the user staring at a blank
+   * screen on a slow connection. `fullPage` is used for the pre-AppLayout
+   * routes (login / set-password) where #app has no chrome around it yet.
+   */
+  static showRouteLoading(container, { fullPage = false } = {}) {
+    if (!container) return;
+    container.innerHTML = `
+      <div class="route-loading ${fullPage ? 'route-loading-fullpage' : ''}">
+        <div class="route-loading-spinner" role="status" aria-label="Loading"></div>
+      </div>
+    `;
   }
 
-  static renderSetPassword(user) {
+  static async renderLogin() {
     const appElem = document.getElementById('app');
-    if (appElem) {
-      appElem.innerHTML = '';
-      const setPasswordForm = new SetPasswordForm(appElem, user);
-      setPasswordForm.render();
-    }
+    if (!appElem) return;
+
+    this.showRouteLoading(appElem, { fullPage: true });
+    const { LoginForm } = await import('./components/loginForm.js');
+
+    appElem.innerHTML = '';
+    const loginForm = new LoginForm(appElem);
+    loginForm.render();
+  }
+
+  static async renderSetPassword(user) {
+    const appElem = document.getElementById('app');
+    if (!appElem) return;
+
+    this.showRouteLoading(appElem, { fullPage: true });
+    const { SetPasswordForm } = await import('./components/setPasswordForm.js');
+
+    appElem.innerHTML = '';
+    const setPasswordForm = new SetPasswordForm(appElem, user);
+    setPasswordForm.render();
   }
 
   static async renderInspectorWorkspace(pathname) {
@@ -173,6 +195,9 @@ export class Router {
 
     const mainStage = await AppLayout.init(pathname, titleMap[activeTab] || 'Field Inspector Portal');
     if (mainStage) {
+      this.showRouteLoading(mainStage);
+      const { InspectorWorkspace } = await import('./components/inspectorWorkspace.js');
+
       const workspace = new InspectorWorkspace(mainStage);
       workspace.activeTab = activeTab;
       workspace.render();
@@ -193,6 +218,9 @@ export class Router {
 
     const mainStage = await AppLayout.init(pathname, titleMap[tabMatch] || 'Customer Care & Manager Hub');
     if (mainStage) {
+      this.showRouteLoading(mainStage);
+      const { ManagerWorkspace } = await import('./components/managerWorkspace.js');
+
       const workspace = new ManagerWorkspace(mainStage);
       if (tabMatch && workspace.activeTab !== tabMatch) {
         workspace.activeTab = tabMatch;
@@ -212,6 +240,9 @@ export class Router {
 
     const mainStage = await AppLayout.init(pathname, titleMap[tabMatch] || 'System Dashboard');
     if (mainStage) {
+      this.showRouteLoading(mainStage);
+      const { AdminWorkspace } = await import('./components/adminWorkspace.js');
+
       const workspace = new AdminWorkspace(mainStage);
       if (tabMatch && workspace.activeTab !== tabMatch) {
         workspace.activeTab = tabMatch;

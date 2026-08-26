@@ -1,5 +1,5 @@
 /**
- * Synx Portal - Inspector Single-Page Portal Entry Point
+ * OIMS - Inspector Single-Page Portal Entry Point
  */
 
 import { AppLayout } from '../components/appLayout.js';

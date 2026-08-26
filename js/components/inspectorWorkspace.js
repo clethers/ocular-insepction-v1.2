@@ -1,5 +1,5 @@
 /**
- * Synx Portal — Field Inspector Workspace Component (`inspectorWorkspace.js`)
+ * OIMS — Field Inspector Workspace Component (`inspectorWorkspace.js`)
  * Single-page workspace for Inspectors anchoring Ocular Form, Ready Queue, Installation Form, and Drafts in-place.
  */
 
@@ -73,9 +73,9 @@ export class InspectorWorkspace {
           this.selectedOcularData = selectedItem;
           if (selectedItem) {
             try {
-              sessionStorage.setItem('synx_selected_installation', JSON.stringify(selectedItem));
+              sessionStorage.setItem('oims_selected_installation', JSON.stringify(selectedItem));
             } catch (e) {
-              console.warn('[Synx] Could not store selected installation item:', e);
+              console.warn('[OIMS] Could not store selected installation item:', e);
             }
           }
           import('../router.js').then(({ Router }) => Router.navigate('/ocular/installation'));
@@ -89,10 +89,10 @@ export class InspectorWorkspace {
         let ocularData = this.selectedOcularData;
         if (!ocularData) {
           try {
-            const stored = sessionStorage.getItem('synx_selected_installation');
+            const stored = sessionStorage.getItem('oims_selected_installation');
             if (stored) ocularData = JSON.parse(stored);
           } catch (e) {
-            console.warn('[Synx] Could not retrieve stored installation item:', e);
+            console.warn('[OIMS] Could not retrieve stored installation item:', e);
           }
         }
         const installView = new InstallationForm(stage, ocularData);

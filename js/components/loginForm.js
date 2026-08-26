@@ -1,5 +1,5 @@
 /**
- * Synx Portal - Universal Authentication Component
+ * OIMS - Universal Authentication Component
  */
 
 import { supabaseService } from '../services/supabaseService.js';
@@ -28,7 +28,7 @@ export class LoginForm {
           <div style="text-align: center; margin-bottom: 1.5rem;">
             <img src="${logoUrl}" alt="EcoWorks Logo" style="height: 56px; margin-bottom: 0.75rem;" />
             <h1 style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary); letter-spacing: -0.02em; margin-bottom: 0.25rem;">
-              Synx Portal
+              Ocular Inspection Management System
             </h1>
             <p style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">
               Electrical Infrastructure & EV Operations Platform
@@ -199,13 +199,13 @@ export class LoginForm {
                 return;
               }
             } catch (routerErr) {
-              console.warn('[Synx Router Fallback]', routerErr);
+              console.warn('[OIMS Router Fallback]', routerErr);
             }
           }
 
           window.location.href = targetUrl;
         } catch (loginErr) {
-          console.error('[Synx Auth Error]', loginErr);
+          console.error('[OIMS Auth Error]', loginErr);
           this.showAlert(`Authentication system notice: ${loginErr?.message || 'Unable to process login. Please try again.'}`);
         } finally {
           this.setSubmitting(false, submitBtn);

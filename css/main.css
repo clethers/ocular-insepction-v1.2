@@ -1,4 +1,4 @@
-/* EcoWorks Building Systems Corporation - Synx Field Inspector Design System */
+/* EcoWorks Building Systems Corporation - OIMS Field Inspector Design System */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
@@ -757,6 +757,37 @@ a {
   100% {
     background-position: 200% 0;
   }
+}
+
+/* Router lazy-chunk loading spinner — shown briefly in #app / the main
+   content stage while a route's dynamically-imported component chunk
+   downloads, so slower connections don't see a blank flash. */
+@keyframes routeSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.route-loading {
+  min-height: 40vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.route-loading.route-loading-fullpage {
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+
+.route-loading-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--ecoworks-blue);
+  border-radius: 50%;
+  animation: routeSpin 0.8s linear infinite;
 }
 
 .skeleton-shimmer {

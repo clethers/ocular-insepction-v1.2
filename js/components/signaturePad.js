@@ -1,5 +1,5 @@
 /**
- * SignaturePad component for touch and mouse sign-offs in Synx
+ * SignaturePad component for touch and mouse sign-offs in OIMS
  */
 
 export class SignaturePad {

@@ -1,5 +1,5 @@
 /**
- * Synx Portal — Client Directory Component (`clientDirectory.js`)
+ * OIMS — Client Directory Component (`clientDirectory.js`)
  * Real, Supabase-backed list of every client served, searchable and
  * filterable, with a per-client Print button for the full audit
  * certificate. When canDelete is true (Admin only), also offers a
@@ -181,7 +181,7 @@ export class ClientDirectory {
       this.renderList();
       AppLayout.showToast(`Archived client "${record.clientName || record.rnNo}".`);
     } catch (err) {
-      console.warn('[Synx ClientDirectory] Archive failed:', err.message);
+      console.warn('[OIMS ClientDirectory] Archive failed:', err.message);
       AppLayout.showToast("Couldn't archive client — check your connection and try again.");
     }
   }

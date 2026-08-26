@@ -1,5 +1,5 @@
 /**
- * Synx Portal - Ready for Installation Queue Page Entry Point (MPA)
+ * OIMS - Ready for Installation Queue Page Entry Point (MPA)
  */
 
 import { AppLayout } from '../components/appLayout.js';
@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (selectedItem.clientName) params.set('client', selectedItem.clientName);
       
       // Store draft selected data in sessionStorage for instant loading fallback
-      sessionStorage.setItem('synx_selected_installation', JSON.stringify(selectedItem));
+      sessionStorage.setItem('oims_selected_installation', JSON.stringify(selectedItem));
       
       window.location.href = `./installation.html?${params.toString()}`;
     });

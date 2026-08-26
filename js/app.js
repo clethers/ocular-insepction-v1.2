@@ -1,5 +1,5 @@
 /**
- * Synx Field App - Main Application Controller
+ * OIMS Field App - Main Application Controller
  * Delegates to centralized SPA Router and AppLayout architecture.
  * Preserves clean code principles and zero file deletion.
  */
@@ -8,7 +8,7 @@ import { Router } from './router.js';
 import { AuthGuard } from './components/authGuard.js';
 import { AppLayout } from './components/appLayout.js';
 
-export class SynxApp {
+export class OIMSApp {
   constructor() {
     this.currentView = 'ocular';
   }
@@ -27,6 +27,6 @@ export class SynxApp {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const app = new SynxApp();
+  const app = new OIMSApp();
   app.init();
 });

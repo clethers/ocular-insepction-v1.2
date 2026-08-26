@@ -1,5 +1,5 @@
 /**
- * Synx Portal — Immutable Audit Logging Service
+ * OIMS — Immutable Audit Logging Service
  * Captures system, security, approval, and form interaction events with tamper-evident local & cloud storage.
  */
 
@@ -84,7 +84,7 @@ const INITIAL_DEMO_LOGS = [
 
 class AuditLogService {
   constructor() {
-    this.storageKey = 'synx_system_audit_logs';
+    this.storageKey = 'oims_system_audit_logs';
     this.initLogs();
   }
 
@@ -159,7 +159,7 @@ class AuditLogService {
           changes_delta: newLog.changesDelta
         }]);
       } catch (err) {
-        console.warn('[Synx Audit Log] Supabase sync deferred:', err.message);
+        console.warn('[OIMS Audit Log] Supabase sync deferred:', err.message);
       }
     }
 
@@ -186,7 +186,7 @@ class AuditLogService {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `synx_audit_log_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `oims_audit_log_export_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

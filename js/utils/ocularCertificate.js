@@ -1,5 +1,5 @@
 /**
- * Synx Portal — Ocular Inspection Certificate Renderer & Print Trigger
+ * OIMS — Ocular Inspection Certificate Renderer & Print Trigger
  */
 
 import logoUrl from '../../assets/ecoworks-logo.png';
@@ -39,7 +39,7 @@ export function renderCertificateHTML(data) {
       </div>
       <div class="cert-doc-meta">
         <div class="cert-badge">✓ TECHNICAL AUDIT VERIFIED</div><br/>
-        <strong>DOC REF:</strong> SYNX-AUD-${escapeHTML(data.rnNo || '101')}<br/>
+        <strong>DOC REF:</strong> OIMS-AUD-${escapeHTML(data.rnNo || '101')}<br/>
         <strong>DATE ISSUED:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
       </div>
     </div>
@@ -203,7 +203,7 @@ export function renderCertificateHTML(data) {
     <!-- Footer Notice -->
     <div class="cert-footer-notice">
       <span>&copy; 2026 EcoWorks Building Systems Corporation. All Rights Reserved.</span>
-      <span>Generated via Synx Portal v1.0 | Official Audit Docket</span>
+      <span>Generated via OIMS v1.0 | Official Audit Docket</span>
     </div>
   `;
 }
@@ -223,7 +223,7 @@ export function printOcularCertificate(data) {
   const originalTitle = document.title;
   const rnNo = (data.rnNo || '101').replace(/[^a-zA-Z0-9_\-]/g, '_');
   const clientName = (data.clientName || 'Client').replace(/[^a-zA-Z0-9_\-]/g, '_');
-  document.title = `ECO-SYN-AUD-${rnNo}_${clientName}`;
+  document.title = `ECO-OIMS-AUD-${rnNo}_${clientName}`;
 
   window.print();
 

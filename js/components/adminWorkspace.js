@@ -1,5 +1,5 @@
 /**
- * Synx Portal — System Administrator Workspace Component (`adminWorkspace.js`)
+ * OIMS — System Administrator Workspace Component (`adminWorkspace.js`)
  * Features User RBAC, Immutable Audit Logs, Master Data Catalog, System Dashboard, and Security Controls.
  */
 

@@ -1,6 +1,6 @@
 import { resolve } from 'path';
 
-// vite.config.js - Synx Single-Page Application (SPA) Clean Path Routing Configuration
+// vite.config.js - OIMS Single-Page Application (SPA) Clean Path Routing Configuration
 export default {
   build: {
     rollupOptions: {

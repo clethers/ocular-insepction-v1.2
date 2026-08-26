@@ -1,5 +1,5 @@
 /**
- * Synx Portal - Saved Drafts & History Repository Page Entry Point (MPA)
+ * OIMS - Saved Drafts & History Repository Page Entry Point (MPA)
  */
 
 import { AppLayout } from '../components/appLayout.js';

@@ -1,5 +1,5 @@
 -- ============================================================================
--- Synx Portal — Supabase Production Database Schema & Security Migration
+-- OIMS — Supabase Production Database Schema & Security Migration
 -- EcoWorks Ocular Inspections, Manager Command Center & System Administration
 -- ============================================================================
 
@@ -418,7 +418,7 @@ CREATE TABLE IF NOT EXISTS public.user_google_credentials (
 CREATE INDEX IF NOT EXISTS idx_google_credentials_user ON public.user_google_credentials(user_id);
 CREATE INDEX IF NOT EXISTS idx_google_credentials_email ON public.user_google_credentials(email);
 
-CREATE TABLE IF NOT EXISTS public.synx_calendar_events (
+CREATE TABLE IF NOT EXISTS public.oims_calendar_events (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     inspection_id UUID REFERENCES public.ocular_inspections(id) ON DELETE CASCADE,
     installation_id UUID REFERENCES public.installation_records(id) ON DELETE CASCADE,
@@ -439,41 +439,41 @@ CREATE TABLE IF NOT EXISTS public.synx_calendar_events (
     CONSTRAINT unique_gcal_event UNIQUE (gcal_calendar_id, gcal_event_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_synx_gcal_inspection ON public.synx_calendar_events(inspection_id);
-CREATE INDEX IF NOT EXISTS idx_synx_gcal_installation ON public.synx_calendar_events(installation_id);
-CREATE INDEX IF NOT EXISTS idx_synx_gcal_inspector ON public.synx_calendar_events(assigned_inspector_id);
-CREATE INDEX IF NOT EXISTS idx_synx_gcal_time ON public.synx_calendar_events(start_time, end_time);
+CREATE INDEX IF NOT EXISTS idx_oims_gcal_inspection ON public.oims_calendar_events(inspection_id);
+CREATE INDEX IF NOT EXISTS idx_oims_gcal_installation ON public.oims_calendar_events(installation_id);
+CREATE INDEX IF NOT EXISTS idx_oims_gcal_inspector ON public.oims_calendar_events(assigned_inspector_id);
+CREATE INDEX IF NOT EXISTS idx_oims_gcal_time ON public.oims_calendar_events(start_time, end_time);
 
 ALTER TABLE public.user_google_credentials ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.synx_calendar_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.oims_calendar_events ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow users access own google credentials" ON public.user_google_credentials;
-DROP POLICY IF EXISTS "Allow read calendar events" ON public.synx_calendar_events;
-DROP POLICY IF EXISTS "Allow insert calendar events" ON public.synx_calendar_events;
-DROP POLICY IF EXISTS "Allow update calendar events" ON public.synx_calendar_events;
-DROP POLICY IF EXISTS "Allow delete calendar events" ON public.synx_calendar_events;
+DROP POLICY IF EXISTS "Allow read calendar events" ON public.oims_calendar_events;
+DROP POLICY IF EXISTS "Allow insert calendar events" ON public.oims_calendar_events;
+DROP POLICY IF EXISTS "Allow update calendar events" ON public.oims_calendar_events;
+DROP POLICY IF EXISTS "Allow delete calendar events" ON public.oims_calendar_events;
 
 CREATE POLICY "Allow users access own google credentials" 
 ON public.user_google_credentials FOR ALL 
 USING (auth.uid() = user_id OR public.get_user_role() = 'admin');
 
 CREATE POLICY "Allow read calendar events" 
-ON public.synx_calendar_events FOR SELECT USING (true);
+ON public.oims_calendar_events FOR SELECT USING (true);
 
 CREATE POLICY "Allow insert calendar events" 
-ON public.synx_calendar_events FOR INSERT WITH CHECK (true);
+ON public.oims_calendar_events FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Allow update calendar events" 
-ON public.synx_calendar_events FOR UPDATE USING (true);
+ON public.oims_calendar_events FOR UPDATE USING (true);
 
 CREATE POLICY "Allow delete calendar events" 
-ON public.synx_calendar_events FOR DELETE 
+ON public.oims_calendar_events FOR DELETE 
 USING (public.get_user_role() IN ('admin', 'lead_engineer', 'operations_manager'));
 
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
-        ALTER PUBLICATION supabase_realtime ADD TABLE public.synx_calendar_events;
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.oims_calendar_events;
     END IF;
 EXCEPTION
     WHEN duplicate_object THEN NULL;
