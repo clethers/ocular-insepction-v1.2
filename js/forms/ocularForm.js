@@ -8,8 +8,12 @@ import { FormStorage } from '../components/formStorage.js';
 import { SAMPLE_OCULAR_DATA } from '../sampleData.js';
 import { supabaseService } from '../services/supabaseService.js';
 import { isValidBase64Image } from '../utils/security.js';
-import logoUrl from '../../assets/ecoworks-logo.png';
 import bannerUrl from '../../assets/ecoworks-banner.png';
+
+const BREAKER_BRAND_OPTIONS = ['GE', 'Schneider', 'ABB', 'Shihlin', 'Koten', 'Royo'];
+const BREAKER_MOUNTING_OPTIONS = ['Bolt-on', 'Plug-in', 'DIN Rail Mounted', 'Fixed/Panel-Mounted Type'];
+const BREAKER_DESIGN_OPTIONS = ['MCB', 'MCCB'];
+const BREAKER_POLE_OPTIONS = ['Single Pole (1P)', 'Double Pole (2P)', 'Three Pole (3P)', 'Four-Pole (4P)'];
 
 export class OcularForm {
   constructor(containerElement) {
@@ -191,24 +195,14 @@ export class OcularForm {
               </div>
             </div>
 
-            <div class="grid-2">
-              <div class="form-group">
-                <label class="form-label">Existing Breaker Brand and Type</label>
-                <input type="text" class="form-input" id="breakerBrandType" name="breakerBrandType" placeholder="e.g. Schneider Electric Bolt-on" />
-              </div>
+            ${this.renderDropdownWithOther('breakerBrandType', 'Existing Breaker Brand', BREAKER_BRAND_OPTIONS)}
 
-              <div class="form-group">
-                <label class="form-label">Breaker Mounting Type</label>
-                <div class="option-grid">
-                  <label class="custom-option">
-                    <input type="radio" name="breakerMounting" value="BOLT-ON" checked />
-                    <span class="option-text">BOLT-ON</span>
-                  </label>
-                  <label class="custom-option">
-                    <input type="radio" name="breakerMounting" value="PLUG-IN" />
-                    <span class="option-text">PLUG-IN</span>
-                  </label>
-                </div>
+            <div class="form-group">
+              <label class="form-label">Type of Breaker</label>
+              <div class="grid-3">
+                ${this.renderDropdownWithOther('breakerMounting', 'Mounting Type', BREAKER_MOUNTING_OPTIONS)}
+                ${this.renderDropdownWithOther('breakerDesign', 'Design', BREAKER_DESIGN_OPTIONS)}
+                ${this.renderDropdownWithOther('breakerPole', 'Pole', BREAKER_POLE_OPTIONS)}
               </div>
             </div>
 
@@ -231,10 +225,51 @@ export class OcularForm {
               <textarea class="form-textarea" id="groundingRodLocation" name="groundingRodLocation" rows="2" placeholder="e.g. Soft soil area directly outside main panelboard wall"></textarea>
             </div>
           </div>
+
+          <!-- NEMA 3R Enclosure Card (Dedicated Charger Breaker, Bypasses Main Panel) -->
+          <div class="form-card">
+            <div class="form-section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>
+              NEMA 3R Enclosure (Dedicated Charger Breaker, If Applicable)
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Is There a NEMA 3R Enclosure?</label>
+              <div class="option-grid">
+                <label class="custom-option">
+                  <input type="radio" name="hasNema3r" value="YES" />
+                  <span class="option-text">YES</span>
+                </label>
+                <label class="custom-option">
+                  <input type="radio" name="hasNema3r" value="NO" checked />
+                  <span class="option-text">NO</span>
+                </label>
+              </div>
+            </div>
+
+            <div id="nema3r-detail-group" style="display: none;">
+              <div class="form-group">
+                <label class="form-label">NEMA 3R Breaker Rating (Please Specify)</label>
+                <input type="text" class="form-input" id="nema3rBreaker" name="nema3rBreaker" placeholder="e.g. 40A 2P 230V" />
+              </div>
+
+              ${this.renderDropdownWithOther('nema3rBrandType', 'Brand', BREAKER_BRAND_OPTIONS)}
+
+              <div class="form-group">
+                <label class="form-label">Type of Breaker</label>
+                <div class="grid-3">
+                  ${this.renderDropdownWithOther('nema3rMounting', 'Mounting Type', BREAKER_MOUNTING_OPTIONS)}
+                  ${this.renderDropdownWithOther('nema3rDesign', 'Design', BREAKER_DESIGN_OPTIONS)}
+                  ${this.renderDropdownWithOther('nema3rPole', 'Pole', BREAKER_POLE_OPTIONS)}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- STEP 3: EV CHARGER INSTALLATION CHECKLIST -->
         <div class="wizard-pane" id="pane-step-3" style="display: none;">
+          <!-- Card 1: Charger Placement -->
           <div class="form-card">
             <div class="form-section-title">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.0 10.9 2 11 2 11.2V16c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
@@ -252,125 +287,123 @@ export class OcularForm {
                 <input type="text" class="form-input" id="estimateDistance" name="estimateDistance" placeholder="e.g. 14 Meters" />
               </div>
             </div>
+          </div>
 
-            <!-- Roughins Conduit Quantities -->
+          <!-- Card 2: Conduit & Routing -->
+          <div class="form-card">
+            <div class="form-section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v4H4zM4 16h16v4H4zM6 8v8M18 8v8"/></svg>
+              Conduit & Routing Materials (3/4")
+            </div>
+
             <div class="form-group">
-              <label class="form-label">Roughins (Conduit Type & Quantity)</label>
+              <label class="form-label">Conduits</label>
               <div class="grid-3">
-                <div class="stepper-card">
-                  <span class="option-text">PVC Conduit</span>
-                  <div class="qty-adjuster">
-                    <button type="button" class="qty-btn" onclick="this.nextElementSibling.stepDown()">-</button>
-                    <input type="number" class="qty-input" id="conduitPvc" name="conduitPvc" value="0" min="0" />
-                    <button type="button" class="qty-btn" onclick="this.previousElementSibling.stepUp()">+</button>
-                  </div>
-                </div>
-
-                <div class="stepper-card">
-                  <span class="option-text">EMT Conduit</span>
-                  <div class="qty-adjuster">
-                    <button type="button" class="qty-btn" onclick="this.nextElementSibling.stepDown()">-</button>
-                    <input type="number" class="qty-input" id="conduitEmt" name="conduitEmt" value="0" min="0" />
-                    <button type="button" class="qty-btn" onclick="this.previousElementSibling.stepUp()">+</button>
-                  </div>
-                </div>
-
-                <div class="stepper-card">
-                  <span class="option-text">IMC Conduit</span>
-                  <div class="qty-adjuster">
-                    <button type="button" class="qty-btn" onclick="this.nextElementSibling.stepDown()">-</button>
-                    <input type="number" class="qty-input" id="conduitImc" name="conduitImc" value="0" min="0" />
-                    <button type="button" class="qty-btn" onclick="this.previousElementSibling.stepUp()">+</button>
-                  </div>
-                </div>
+                ${this.renderQtyStepper('conduitPvc', 'PVC (Rigid)')}
+                ${this.renderQtyStepper('conduitEmt', 'EMT')}
+                ${this.renderQtyStepper('conduitImc', 'IMC')}
+                ${this.renderQtyStepper('conduitRsc', 'RSC')}
+                ${this.renderQtyStepper('conduitPvcMoulding', 'PVC Moulding')}
+                ${this.renderQtyStepper('conduitBlackFlexible', 'Black Coated Flexible')}
+                ${this.renderQtyStepper('conduitPvcFlexibleOrange', 'PVC Flexible Orange')}
               </div>
             </div>
 
-            <!-- Conduit Fittings -->
             <div class="grid-2">
               <div class="form-group">
-                <label class="form-label">Liquid Tight Fittings</label>
-                <div class="field-row">
-                  <div class="option-grid" style="flex: 1;">
-                    <label class="custom-option">
-                      <input type="radio" name="liquidTightFittings" value="YES" checked />
-                      <span class="option-text">YES</span>
-                    </label>
-                    <label class="custom-option">
-                      <input type="radio" name="liquidTightFittings" value="NO" />
-                      <span class="option-text">NO</span>
-                    </label>
-                  </div>
-                  <div class="qty-adjuster">
-                    <button type="button" class="qty-btn" onclick="this.nextElementSibling.stepDown()">-</button>
-                    <input type="number" class="qty-input" id="liquidTightQty" name="liquidTightQty" value="4" min="0" />
-                    <button type="button" class="qty-btn" onclick="this.previousElementSibling.stepUp()">+</button>
-                  </div>
+                <label class="form-label">Other Conduit Type (Please Specify Type & Size)</label>
+                <input type="text" class="form-input" id="conduitOtherType" name="conduitOtherType" placeholder="e.g. 1&quot; RSC" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Other Conduit Qty</label>
+                <input type="number" class="form-input" id="conduitOtherQty" name="conduitOtherQty" value="0" min="0" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Elbows</label>
+              <div class="grid-3">
+                ${this.renderQtyStepper('elbowEmt90', 'EMT Elbow 90°')}
+                ${this.renderQtyStepper('elbowImc90', 'IMC Elbow 90°')}
+                ${this.renderQtyStepper('elbowRsc90', 'RSC 90°')}
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Conduit Bodies (LB, LR, LL, C, T)</label>
+              <div class="grid-4">
+                ${this.renderMiniQty('bodyLb', 'LB')}
+                ${this.renderMiniQty('bodyLr', 'LR')}
+                ${this.renderMiniQty('bodyLl', 'LL')}
+                ${this.renderMiniQty('bodyC', 'C')}
+                ${this.renderMiniQty('bodyT', 'T')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Fittings & Connections -->
+          <div class="form-card">
+            <div class="form-section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Fittings & Connections (3/4")
+            </div>
+
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label">Liquid Tight Connector (Straight Type) Qty</label>
+                <div class="qty-adjuster">
+                  <button type="button" class="qty-btn" onclick="this.nextElementSibling.stepDown()">-</button>
+                  <input type="number" class="qty-input" id="liquidTightConnectorQty" name="liquidTightConnectorQty" value="4" min="0" />
+                  <button type="button" class="qty-btn" onclick="this.previousElementSibling.stepUp()">+</button>
                 </div>
               </div>
 
               <div class="form-group">
-                <label class="form-label">Conduit Bodies (LB, LR, LL, T)</label>
-                <div class="grid-4">
-                  <div class="mini-input-card">
-                    <span class="mini-card-label">LB</span>
-                    <input type="number" class="form-input" id="bodyLb" name="bodyLb" value="0" min="0" />
-                  </div>
-                  <div class="mini-input-card">
-                    <span class="mini-card-label">LR</span>
-                    <input type="number" class="form-input" id="bodyLr" name="bodyLr" value="0" min="0" />
-                  </div>
-                  <div class="mini-input-card">
-                    <span class="mini-card-label">LL</span>
-                    <input type="number" class="form-input" id="bodyLl" name="bodyLl" value="0" min="0" />
-                  </div>
-                  <div class="mini-input-card">
-                    <span class="mini-card-label">T</span>
-                    <input type="number" class="form-input" id="bodyT" name="bodyT" value="0" min="0" />
-                  </div>
-                </div>
+                <label class="form-label">Liquid Tight Flexible Conduit Length</label>
+                <input type="text" class="form-input" id="liquidTightFlexLength" name="liquidTightFlexLength" placeholder="e.g. 30cm" />
               </div>
             </div>
 
-            <!-- Electrical Boxes -->
+            <div class="form-group">
+              <label class="form-label">Connectors</label>
+              <div class="grid-2">
+                ${this.renderQtyStepper('connectorEmtSetScrew', 'EMT Set Screw Type')}
+                ${this.renderQtyStepper('connectorEmtCompression', 'EMT Compression Type')}
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Coupling</label>
+              <div class="grid-2">
+                ${this.renderQtyStepper('couplingEmtSetScrew', 'EMT Set Screw Type')}
+                ${this.renderQtyStepper('couplingEmtCompression', 'EMT Compression Type')}
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Conduit Clamps</label>
+              <div class="grid-3">
+                ${this.renderQtyStepper('clampCTwoHole', 'C-Clamp 2-Hole')}
+                ${this.renderQtyStepper('clampCOneHole', 'C-Clamp 1-Hole')}
+                ${this.renderQtyStepper('clampStrapMalleable', 'Strap-Malleable Iron 1-Hole')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: Electrical Boxes -->
+          <div class="form-card">
+            <div class="form-section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+              Electrical Boxes
+            </div>
+
             <div class="form-group">
               <label class="form-label">Electrical Boxes Quantity (PCS)</label>
               <div class="grid-4">
-                <div class="stepper-card">
-                  <span class="option-text">UTILITY</span>
-                  <div class="qty-adjuster">
-                    <button type="button" class="qty-btn" onclick="this.nextElementSibling.stepDown()">-</button>
-                    <input type="number" class="qty-input" id="boxUtility" name="boxUtility" value="0" min="0" />
-                    <button type="button" class="qty-btn" onclick="this.previousElementSibling.stepUp()">+</button>
-                  </div>
-                </div>
-
-                <div class="stepper-card">
-                  <span class="option-text">SQUARE BOX</span>
-                  <div class="qty-adjuster">
-                    <button type="button" class="qty-btn" onclick="this.nextElementSibling.stepDown()">-</button>
-                    <input type="number" class="qty-input" id="boxSquare" name="boxSquare" value="0" min="0" />
-                    <button type="button" class="qty-btn" onclick="this.previousElementSibling.stepUp()">+</button>
-                  </div>
-                </div>
-
-                <div class="stepper-card">
-                  <span class="option-text">OCTAGON BOX</span>
-                  <div class="qty-adjuster">
-                    <button type="button" class="qty-btn" onclick="this.nextElementSibling.stepDown()">-</button>
-                    <input type="number" class="qty-input" id="boxOctagon" name="boxOctagon" value="0" min="0" />
-                    <button type="button" class="qty-btn" onclick="this.previousElementSibling.stepUp()">+</button>
-                  </div>
-                </div>
-
-                <div class="stepper-card">
-                  <span class="option-text">JUNCTION BOX</span>
-                  <div class="qty-adjuster">
-                    <button type="button" class="qty-btn" onclick="this.nextElementSibling.stepDown()">-</button>
-                    <input type="number" class="qty-input" id="boxJunction" name="boxJunction" value="0" min="0" />
-                    <button type="button" class="qty-btn" onclick="this.previousElementSibling.stepUp()">+</button>
-                  </div>
-                </div>
+                ${this.renderQtyStepper('boxUtility', 'UTILITY')}
+                ${this.renderQtyStepper('boxSquare', 'SQUARE BOX')}
+                ${this.renderQtyStepper('boxOctagon', 'OCTAGON BOX')}
+                ${this.renderQtyStepper('boxJunction', 'JUNCTION BOX')}
               </div>
 
               <div class="form-group" style="margin-top: 0.75rem;">
@@ -412,6 +445,10 @@ export class OcularForm {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
               Ocular Site Photo Attachments Log
               <span class="form-section-subtitle">4 Required Audit Photos</span>
+              <button type="button" class="btn btn-secondary no-print" id="btn-download-photos" style="padding: 0.4rem 0.75rem; font-size: 0.8rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download Photos
+              </button>
             </div>
 
             <div class="grid-4" id="ocular-photo-grid-container">
@@ -573,11 +610,6 @@ export class OcularForm {
               Save Draft
             </button>
 
-            <button type="button" class="btn btn-green" id="btn-print-preview">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-              Print / Export Form
-            </button>
-
             <button type="button" class="btn btn-primary" id="btn-next">
               Next Step →
             </button>
@@ -589,9 +621,6 @@ export class OcularForm {
           </div>
         </div>
       </form>
-
-      <!-- Printable Sheet Container (Rendered on Demand) -->
-      <div id="print-sheet-container" class="print-document" style="display: none;"></div>
     `;
 
     this.initSignaturePads();
@@ -1005,6 +1034,42 @@ export class OcularForm {
     }
   }
 
+  renderQtyStepper(name, label, defaultValue = 0) {
+    return `
+      <div class="stepper-card">
+        <span class="option-text">${label}</span>
+        <div class="qty-adjuster">
+          <button type="button" class="qty-btn" onclick="this.nextElementSibling.stepDown()">-</button>
+          <input type="number" class="qty-input" id="${name}" name="${name}" value="${defaultValue}" min="0" />
+          <button type="button" class="qty-btn" onclick="this.previousElementSibling.stepUp()">+</button>
+        </div>
+      </div>
+    `;
+  }
+
+  renderMiniQty(name, label, defaultValue = 0) {
+    return `
+      <div class="mini-input-card">
+        <span class="mini-card-label">${label}</span>
+        <input type="number" class="form-input" id="${name}" name="${name}" value="${defaultValue}" min="0" />
+      </div>
+    `;
+  }
+
+  renderDropdownWithOther(name, label, options) {
+    return `
+      <div class="form-group">
+        <label class="form-label">${label}</label>
+        <select class="form-select breaker-dropdown" id="${name}" name="${name}" data-other-target="${name}Other">
+          <option value="">-- Select ${label} --</option>
+          ${options.map(o => `<option value="${o}">${o}</option>`).join('')}
+          <option value="OTHER">Other (Specify)</option>
+        </select>
+        <input type="text" class="form-input" id="${name}Other" name="${name}Other" placeholder="Please specify" style="display: none; margin-top: 0.5rem;" />
+      </div>
+    `;
+  }
+
   initEvents() {
     // Preset Sample Data Loader (if present)
     const loadSampleBtn = document.getElementById('btn-load-sample');
@@ -1045,32 +1110,10 @@ export class OcularForm {
       });
     }
 
-    // Print / Export
-    const printPreviewBtn = document.getElementById('btn-print-preview');
-    if (printPreviewBtn) {
-      printPreviewBtn.addEventListener('click', () => {
-        // Auto-update Time End before export if empty
-        const timeEndElem = document.getElementById('timeEnd');
-        if (timeEndElem && (!timeEndElem.value || timeEndElem.value.trim() === '')) {
-          const now = new Date();
-          timeEndElem.value = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-        }
 
-        this.generatePrintableDocument();
-        const data = this.getFormData();
-        const originalTitle = document.title;
-        const rnNo = (data.rnNo || '101').replace(/[^a-zA-Z0-9_\-]/g, '_');
-        const clientName = (data.clientName || 'Client').replace(/[^a-zA-Z0-9_\-]/g, '_');
-
-        // Set document title to controlled tracking number for default PDF file name
-        document.title = `ECO-SYN-AUD-${rnNo}_${clientName}`;
-
-        window.print();
-
-        setTimeout(() => {
-          document.title = originalTitle;
-        }, 1000);
-      });
+    const downloadPhotosBtn = document.getElementById('btn-download-photos');
+    if (downloadPhotosBtn) {
+      downloadPhotosBtn.addEventListener('click', () => this.downloadAllPhotos());
     }
 
     // Toggle voltage specify group
@@ -1091,6 +1134,27 @@ export class OcularForm {
         const rodGroup = document.getElementById('grounding-rod-group');
         if (rodGroup) {
           rodGroup.style.display = e.target.value === 'NO' ? 'block' : 'none';
+        }
+      });
+    });
+
+    // Toggle "Other (Specify)" text field for any breaker dropdown (Brand, Mounting, Design, Pole)
+    document.querySelectorAll('.breaker-dropdown').forEach(select => {
+      select.addEventListener('change', (e) => {
+        const otherField = document.getElementById(e.target.getAttribute('data-other-target'));
+        if (otherField) {
+          otherField.style.display = e.target.value === 'OTHER' ? 'block' : 'none';
+        }
+      });
+    });
+
+    // Toggle NEMA 3R Enclosure detail fields
+    const nema3rRadios = document.querySelectorAll('input[name="hasNema3r"]');
+    nema3rRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const detailGroup = document.getElementById('nema3r-detail-group');
+        if (detailGroup) {
+          detailGroup.style.display = e.target.value === 'YES' ? 'block' : 'none';
         }
       });
     });
@@ -1118,16 +1182,12 @@ export class OcularForm {
       const radio = document.querySelector(`input[name="spaceProvision"][value="${data.spaceProvision}"]`);
       if (radio) radio.checked = true;
     }
-    if (data.breakerMounting) {
-      const radio = document.querySelector(`input[name="breakerMounting"][value="${data.breakerMounting}"]`);
-      if (radio) radio.checked = true;
-    }
     if (data.groundingSystem) {
       const radio = document.querySelector(`input[name="groundingSystem"][value="${data.groundingSystem}"]`);
       if (radio) radio.checked = true;
     }
-    if (data.liquidTightFittings) {
-      const radio = document.querySelector(`input[name="liquidTightFittings"][value="${data.liquidTightFittings}"]`);
+    if (data.hasNema3r) {
+      const radio = document.querySelector(`input[name="hasNema3r"][value="${data.hasNema3r}"]`);
       if (radio) radio.checked = true;
     }
 
@@ -1185,182 +1245,36 @@ export class OcularForm {
     setTimeout(() => toast.remove(), 3500);
   }
 
-  formatPrintDateTime(rawDate) {
-    if (!rawDate) {
-      const now = new Date();
-      return now.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  downloadAllPhotos() {
+    const photoLabels = {
+      proposed_layout: 'Proposed_Layout',
+      tapping_point: 'Tapping_Point',
+      wiring_conduit: 'Wiring_Conduit_Layout',
+      ev_charging_location: 'EV_Charging_Location'
+    };
+
+    const rnNo = (document.getElementById('rnNo')?.value || 'AUD').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    let downloadCount = 0;
+
+    for (const [id, label] of Object.entries(photoLabels)) {
+      const img = document.getElementById(`prev_${id}`);
+      if (!img || !isValidBase64Image(img.src)) continue;
+
+      const mimeMatch = img.src.match(/^data:image\/([a-zA-Z0-9+]+);base64,/i);
+      const ext = mimeMatch ? mimeMatch[1].replace('svg+xml', 'svg').replace('jpeg', 'jpg') : 'jpg';
+
+      const link = document.createElement('a');
+      link.href = img.src;
+      link.download = `${rnNo}_${label}.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      downloadCount++;
     }
-    const d = new Date(rawDate);
-    if (isNaN(d.getTime())) return rawDate;
-    return d.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    this.showToast(downloadCount > 0
+      ? `Downloading ${downloadCount} photo${downloadCount > 1 ? 's' : ''}...`
+      : 'No photos uploaded yet to download.');
   }
 
-  generatePrintableDocument() {
-    const data = this.getFormData();
-    const printContainer = document.getElementById('print-sheet-container');
-    
-    printContainer.innerHTML = `
-      <!-- Corporate Header -->
-      <div class="cert-header">
-        <div class="cert-brand">
-          <img src="${logoUrl}" class="cert-logo" alt="EcoWorks Official Logo" />
-          <div>
-            <div class="cert-company-title">EcoWorks Building Systems Corporation</div>
-            <div class="cert-company-sub">Electrical Engineering & EV Infrastructure Services</div>
-          </div>
-        </div>
-        <div class="cert-doc-meta">
-          <div class="cert-badge">✓ TECHNICAL AUDIT VERIFIED</div><br/>
-          <strong>DOC REF:</strong> SYNX-AUD-${data.rnNo || '101'}<br/>
-          <strong>DATE ISSUED:</strong> ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-        </div>
-      </div>
-
-      <!-- Title Banner -->
-      <div class="cert-title-banner">
-        <div class="cert-title-text">CERTIFICATE OF OCULAR AUDIT & SITE TECHNICAL INSPECTION</div>
-        <div class="cert-subtitle-text">Official Electrical Infrastructure & Feeder Assessment Docket</div>
-      </div>
-
-      <!-- Section 1: Identification -->
-      <div class="cert-section-title">
-        <span>1. Client & Site Identification</span>
-        <span style="font-size: 7.5pt; opacity: 0.8;">RN: ${data.rnNo || 'N/A'}</span>
-      </div>
-      <table class="cert-table">
-        <tr>
-          <td width="50%"><span class="cert-label">CLIENT / OWNER:</span> <span class="cert-value">${data.clientName || 'N/A'}</span></td>
-          <td width="50%"><span class="cert-label">AUDIT DATE & TIME:</span> <span class="cert-value">${this.formatPrintDateTime(data.dateTime)} (${data.timeStart || '--'} - ${data.timeEnd || '--'})</span></td>
-        </tr>
-        <tr>
-          <td colspan="2"><span class="cert-label">LOCATION ADDRESS:</span> <span class="cert-value">${data.locationAddress || 'N/A'}</span></td>
-        </tr>
-        <tr>
-          <td><span class="cert-label">REFERENCE NO. (RN):</span> <span class="cert-value">${data.rnNo || 'N/A'}</span></td>
-          <td><span class="cert-label">INSTALLATION NO.:</span> <span class="cert-value">${data.installationNo || 'N/A'}</span></td>
-        </tr>
-        <tr>
-          <td><span class="cert-label">SCOPE OF WORK:</span> <span class="cert-value">${data.scopeOfWorks || 'Site Audit'}</span></td>
-          <td><span class="cert-label">CONTACT NUMBER:</span> <span class="cert-value">${data.contactNo || 'N/A'}</span></td>
-        </tr>
-      </table>
-
-      <!-- Section 2: Feeder & Distribution -->
-      <div class="cert-section-title">
-        <span>2. Incoming Feeder & Panelboard Technical Specs</span>
-        <span style="font-size: 7.5pt; opacity: 0.8;">PEC COMPLIANCE</span>
-      </div>
-      <table class="cert-table">
-        <tr>
-          <td colspan="2">
-            <span class="cert-label">VOLTAGE SYSTEM:</span> &nbsp;&nbsp;
-            <span class="cert-checkbox">${data.voltageSystem === '220_ll' ? '✓' : ''}</span> 220 VAC, 1 Ø, Line-to-Line &nbsp;&nbsp;&nbsp;
-            <span class="cert-checkbox">${data.voltageSystem === '220_lg' ? '✓' : ''}</span> 220 VAC, 1 Ø, Line-to-Ground &nbsp;&nbsp;&nbsp;
-            <span class="cert-checkbox">${data.voltageSystem === 'others' ? '✓' : ''}</span> Custom: ${data.voltageSpecify || 'N/A'}
-          </td>
-        </tr>
-        <tr>
-          <td width="50%"><span class="cert-label">MAIN DISTRIBUTION BREAKER:</span> <span class="cert-value">${data.mainBreaker || 'N/A'}</span></td>
-          <td width="50%"><span class="cert-label">NO. OF BRANCH CIRCUITS:</span> <span class="cert-value">${data.noOfBranches || '0'} Branches</span></td>
-        </tr>
-        <tr>
-          <td><span class="cert-label">SPARE BREAKER (40AT/2P/230V):</span> <span class="cert-pass-badge">${data.spareBreaker || 'NO'}</span></td>
-          <td><span class="cert-label">PANELBOARD SPACE PROVISION:</span> <span class="cert-pass-badge">${data.spaceProvision || 'NO'}</span></td>
-        </tr>
-        <tr>
-          <td><span class="cert-label">BREAKER BRAND / TYPE:</span> <span class="cert-value">${data.breakerBrandType || 'N/A'}</span></td>
-          <td><span class="cert-label">BREAKER MOUNTING TYPE:</span> <span class="cert-value">${data.breakerMounting || 'Bolt-on'}</span></td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <span class="cert-label">EQUIPMENT GROUNDING SYSTEM:</span> <span class="cert-pass-badge">${data.groundingSystem || 'YES'}</span> &nbsp;&nbsp;
-            <em>(Ground Rod Location Note: ${data.groundingRodLocation || 'Standard Panel Earth Bar'})</em>
-          </td>
-        </tr>
-      </table>
-
-      <!-- Section 3: EV Charger Specs -->
-      <div class="cert-section-title">
-        <span>3. EV Charger Installation & Material Bill of Materials</span>
-      </div>
-      <table class="cert-table">
-        <tr>
-          <td width="50%"><span class="cert-label">DESIGNATED CHARGER LOCATION:</span> <span class="cert-value">${data.chargerLocation || 'N/A'}</span></td>
-          <td width="50%"><span class="cert-label">ESTIMATED RUN DISTANCE:</span> <span class="cert-value">${data.estimateDistance || 'N/A'}</span></td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <span class="cert-label">CONDUIT ROUGH-IN REQUIREMENTS:</span> PVC: <strong>${data.conduitPvc || 0}</strong> pcs &nbsp;|&nbsp; EMT: <strong>${data.conduitEmt || 0}</strong> pcs &nbsp;|&nbsp; IMC: <strong>${data.conduitImc || 0}</strong> pcs<br/>
-            <span class="cert-label">FITTINGS & CONDUIT BODIES:</span> Liquid-Tight: <strong>${data.liquidTightQty || 0}</strong> pcs (${data.liquidTightFittings || 'YES'}) &nbsp;|&nbsp; LB: <strong>${data.bodyLb || 0}</strong> &nbsp;|&nbsp; LR: <strong>${data.bodyLr || 0}</strong> &nbsp;|&nbsp; LL: <strong>${data.bodyLl || 0}</strong> &nbsp;|&nbsp; T: <strong>${data.bodyT || 0}</strong><br/>
-            <span class="cert-label">ENCLOSURES & BOXES:</span> Utility: <strong>${data.boxUtility || 0}</strong> &nbsp;|&nbsp; Square: <strong>${data.boxSquare || 0}</strong> &nbsp;|&nbsp; Octagon: <strong>${data.boxOctagon || 0}</strong> &nbsp;|&nbsp; Junction: <strong>${data.boxJunction || 0}</strong>
-          </td>
-        </tr>
-        <tr>
-          <td colspan="2">
-            <span class="cert-label">RETROFITTINGS:</span> <span class="cert-value">${data.workRetrofitting || 'None required'}</span> &nbsp;&nbsp;|&nbsp;&nbsp;
-            <span class="cert-label">REPLACEMENTS:</span> <span class="cert-value">${data.workReplacement || 'None'}</span><br/>
-            <span class="cert-label">NEW INSTALLATION DETAILS:</span> <span class="cert-value">${data.workNewInstallation || 'Standard Wall Connector Installation'}</span>
-          </td>
-        </tr>
-      </table>
-
-      <!-- Section 4: Site Inspection Photo Evidence Gallery Log -->
-      <div class="cert-section-title">
-        <span>4. Ocular Site Technical Photo Evidence Gallery Log</span>
-        <span style="font-size: 7.5pt; opacity: 0.8;">4 FIELD PHOTOS VERIFIED</span>
-      </div>
-      <div class="cert-photo-grid">
-        ${[
-          { id: 'proposed_layout', title: '1. Proposed Layout' },
-          { id: 'tapping_point', title: '2. Tapping Point' },
-          { id: 'wiring_conduit', title: '3. Wiring/Conduit Layout' },
-          { id: 'ev_charging_location', title: '4. EV Charging Location' }
-        ].map(p => {
-          const img = document.getElementById(`prev_${p.id}`);
-          const hasImage = img && img.src && img.src.length > 50;
-          return `
-            <div class="cert-photo-item">
-              ${hasImage ? `
-                <img src="${img.src}" class="cert-photo-img" alt="${p.title}" />
-              ` : `
-                <div style="height: 75px; background: #f1f5f9; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 2px; color: #64748b; font-size: 7pt; font-weight: 700;">
-                  <span>📷 FIELD PHOTO</span>
-                  <span class="cert-pass-badge" style="margin-top: 2px; font-size: 6.5pt;">VERIFIED ✓</span>
-                </div>
-              `}
-              <div class="cert-photo-title">${p.title}</div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-
-      <!-- Signatures Block -->
-      <div class="cert-signature-section">
-        <div class="cert-sig-grid">
-          <div class="cert-sig-box">
-            <div class="cert-sig-card">
-              <div class="cert-sig-header">AUDITED & CERTIFIED BY</div>
-              ${data.inspectorSigImg ? `<img src="${data.inspectorSigImg}" class="cert-sig-img"/>` : '<div style="height: 50px;"></div>'}
-              <div class="cert-sig-name">${data.inspectedByName || 'Engr. Marco Santos, REE'}</div>
-              <div class="cert-sig-title">Lead Certified Electrical Inspector (REE)</div>
-            </div>
-          </div>
-          <div class="cert-sig-box">
-            <div class="cert-sig-card">
-              <div class="cert-sig-header">WITNESSED & ACKNOWLEDGED BY</div>
-              ${data.witnessSigImg ? `<img src="${data.witnessSigImg}" class="cert-sig-img"/>` : '<div style="height: 50px;"></div>'}
-              <div class="cert-sig-name">${data.witnessedByName || 'Client / Property Representative'}</div>
-              <div class="cert-sig-title">Authorized Witness Signature</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Footer Notice -->
-      <div class="cert-footer-notice">
-        <span>&copy; 2026 EcoWorks Building Systems Corporation. All Rights Reserved.</span>
-        <span>Generated via Synx Portal v1.0 | Official Audit Docket</span>
-      </div>
-    `;
-  }
 }
