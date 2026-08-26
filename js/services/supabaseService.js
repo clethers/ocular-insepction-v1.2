@@ -241,8 +241,6 @@ class SupabaseService {
     ['inspectorSigImg', 'inspector_sig_img'],
     ['witnessedByName', 'witnessed_by_name'],
     ['witnessSigImg', 'witness_sig_img'],
-    ['liquidTightFittings', 'liquid_tight_fittings'],
-    ['liquidTightQty', 'liquid_tight_qty'],
     ['boxOthers', 'other_boxes_notes']
   ];
 
@@ -260,7 +258,6 @@ class SupabaseService {
     'conduit_black_flexible_qty',
     'conduit_pvc_flexible_orange_qty',
     'conduit_other_qty',
-    'liquid_tight_qty',
     'liquid_tight_connector_qty',
     'elbow_emt90_qty',
     'elbow_imc90_qty',
