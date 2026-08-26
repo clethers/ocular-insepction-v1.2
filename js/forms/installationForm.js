@@ -17,6 +17,8 @@ export class InstallationForm {
     this.ocularData = ocularData;
     this.installerSig = null;
     this.clientSig = null;
+    this.currentStep = 1;
+    this.totalSteps = 4;
   }
 
   render(passedOcularData = null) {
@@ -24,29 +26,33 @@ export class InstallationForm {
       this.ocularData = passedOcularData;
     }
 
-    const hasOcularContext = !!this.ocularData;
-
     this.container.innerHTML = `
-      ${hasOcularContext ? `
-        <div class="form-card no-print" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1.5px solid var(--ecoworks-cyan);">
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-            <div>
-              <div style="font-size: 0.8rem; font-weight: 800; color: var(--ecoworks-blue); text-transform: uppercase; letter-spacing: 0.05em;">
-                Pre-Filled From Ready Ocular Inspection
-              </div>
-              <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary); margin-top: 0.25rem;">
-                Client: ${this.ocularData.clientName || 'N/A'} (RN: ${this.ocularData.rnNo || 'N/A'})
-              </h3>
-              <p style="font-size: 0.825rem; color: var(--text-secondary); margin-top: 0.15rem;">
-                Location: ${this.ocularData.locationAddress || 'N/A'} | Feeder: ${this.ocularData.voltageSystem === '220_ll' ? '220V L-L' : '220V'}
-              </p>
-            </div>
-            <span class="status-badge status-badge-ready" style="background: #ffffff;">
-              Audit Connected ✓
-            </span>
-          </div>
-      ` : ''}
+      <!-- Step Wizard Navigation Header -->
+      <div class="wizard-progress-bar no-print">
+        <div class="wizard-step active" data-step="1">
+          <div class="wizard-step-num">1</div>
+          <div class="wizard-step-label">Header & Client</div>
+        </div>
+        <div class="wizard-line" id="install-line-1"></div>
+        <div class="wizard-step" data-step="2">
+          <div class="wizard-step-num">2</div>
+          <div class="wizard-step-label">Equipment & Testing</div>
+        </div>
+        <div class="wizard-line" id="install-line-2"></div>
+        <div class="wizard-step" data-step="3">
+          <div class="wizard-step-num">3</div>
+          <div class="wizard-step-label">Photos</div>
+        </div>
+        <div class="wizard-line" id="install-line-3"></div>
+        <div class="wizard-step" data-step="4">
+          <div class="wizard-step-num">4</div>
+          <div class="wizard-step-label">Summary & Sign-off</div>
+        </div>
+      </div>
+
       <form id="installation-form-element">
+        <!-- STEP 1: HEADER & CLIENT -->
+        <div class="wizard-pane" id="install-pane-step-1">
         <!-- HEADER CARD -->
         <div class="form-card">
           <div class="form-section-title">
@@ -84,7 +90,11 @@ export class InstallationForm {
             </div>
           </div>
         </div>
+        </div>
+        <!-- END STEP 1 -->
 
+        <!-- STEP 2: EQUIPMENT & TESTING -->
+        <div class="wizard-pane" id="install-pane-step-2" style="display: none;">
         <!-- EQUIPMENT & ASSET SERIAL NUMBERS -->
         <div class="form-card">
           <div class="form-section-title">
@@ -163,7 +173,11 @@ export class InstallationForm {
             </div>
           </div>
         </div>
+        </div>
+        <!-- END STEP 2 -->
 
+        <!-- STEP 3: PHOTOS -->
+        <div class="wizard-pane" id="install-pane-step-3" style="display: none;">
         <!-- PHOTO ATTACHMENTS LOG (7 OFFICIAL AUDIT LABELS) -->
         <div class="form-card">
           <div class="form-section-title">
@@ -335,7 +349,11 @@ export class InstallationForm {
             </div>
           </div>
         </div>
+        </div>
+        <!-- END STEP 3 -->
 
+        <!-- STEP 4: SUMMARY & SIGN-OFF -->
+        <div class="wizard-pane" id="install-pane-step-4" style="display: none;">
         <!-- EXECUTIVE HANDOVER SUMMARY DOCKET -->
         <div id="install-summary-content"></div>
 
@@ -384,10 +402,24 @@ export class InstallationForm {
             </div>
           </div>
         </div>
+        </div>
+        <!-- END STEP 4 -->
 
-        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem;" class="no-print">
-          <button type="button" class="btn btn-outline" id="btn-save-install-draft">Save Installation Draft</button>
-          <button type="button" class="btn btn-green" id="btn-print-install">Print / Export Handover Certificate</button>
+        <!-- Floating Wizard Navigation Footer -->
+        <div class="wizard-footer no-print">
+          <button type="button" class="btn btn-outline" id="btn-prev-install" style="visibility: hidden;">
+            ← Previous Step
+          </button>
+
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-outline" id="btn-save-install-draft">Save Installation Draft</button>
+
+            <button type="button" class="btn btn-primary" id="btn-next-install">
+              Next Step →
+            </button>
+
+            <button type="button" class="btn btn-green" id="btn-print-install" style="display: none;">Print / Export Handover Certificate</button>
+          </div>
         </div>
       </form>
       <div id="print-sheet-container" class="print-document" style="display: none;"></div>
@@ -396,7 +428,78 @@ export class InstallationForm {
     this.initSignaturePads();
     this.initEvents();
     this.initPhotoUploaders();
+    this.initWizard();
     this.updateInstallSummary();
+  }
+
+  initWizard() {
+    const steps = this.container.querySelectorAll('.wizard-step');
+    steps.forEach(step => {
+      step.addEventListener('click', () => {
+        const stepNum = parseInt(step.getAttribute('data-step'), 10);
+        this.goToStep(stepNum);
+      });
+    });
+
+    document.getElementById('btn-next-install').addEventListener('click', () => {
+      if (this.currentStep < this.totalSteps) {
+        this.goToStep(this.currentStep + 1);
+      }
+    });
+
+    document.getElementById('btn-prev-install').addEventListener('click', () => {
+      if (this.currentStep > 1) {
+        this.goToStep(this.currentStep - 1);
+      }
+    });
+  }
+
+  goToStep(stepNum) {
+    this.currentStep = stepNum;
+
+    for (let i = 1; i <= this.totalSteps; i++) {
+      const pane = document.getElementById(`install-pane-step-${i}`);
+      if (pane) pane.style.display = i === stepNum ? 'block' : 'none';
+
+      const stepElem = this.container.querySelector(`.wizard-step[data-step="${i}"]`);
+      if (stepElem) {
+        if (i === stepNum) {
+          stepElem.classList.add('active');
+        } else {
+          stepElem.classList.remove('active');
+        }
+        if (i < stepNum) {
+          stepElem.classList.add('completed');
+        }
+      }
+
+      const line = document.getElementById(`install-line-${i}`);
+      if (line) {
+        if (i < stepNum) {
+          line.classList.add('active');
+        } else {
+          line.classList.remove('active');
+        }
+      }
+    }
+
+    const prevBtn = document.getElementById('btn-prev-install');
+    const nextBtn = document.getElementById('btn-next-install');
+    const printBtn = document.getElementById('btn-print-install');
+
+    if (prevBtn) prevBtn.style.visibility = stepNum > 1 ? 'visible' : 'hidden';
+    if (nextBtn) nextBtn.style.display = stepNum === this.totalSteps ? 'none' : 'inline-flex';
+    if (printBtn) printBtn.style.display = stepNum === this.totalSteps ? 'inline-flex' : 'none';
+
+    if (stepNum === this.totalSteps) {
+      this.updateInstallSummary();
+      setTimeout(() => {
+        if (this.installerSig) this.installerSig.resizeCanvas();
+        if (this.clientSig) this.clientSig.resizeCanvas();
+      }, 150);
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   updateInstallSummary() {
@@ -414,9 +517,21 @@ export class InstallationForm {
     const breakerInstalled = document.getElementById('breakerInstalled')?.value || '40A 2P 230V MCB';
     const cableGauge = document.getElementById('cableGaugeUsed')?.value || '8.0 mm² THHN/THWN-2';
 
-    const testVoltage = document.getElementById('testVoltageNoLoad')?.value || '228 VAC';
-    const testGrounding = document.getElementById('testGroundingResistance')?.value || '1.8 Ω';
-    const testStatus = document.getElementById('commissioningStatus')?.value || 'PASSED';
+    const testVoltageNoLoad = document.getElementById('voltageNoLoad')?.value || 'Not Entered';
+    const testVoltageFullLoad = document.getElementById('voltageFullLoad')?.value || 'Not Entered';
+    const testGrounding = document.getElementById('groundingResistance')?.value || 'Not Entered';
+    const testInsulation = document.getElementById('insulationTest')?.value || 'Not Entered';
+    const testStatus = document.getElementById('testChargingStatus')?.value || 'Not Entered';
+    const notes = document.getElementById('notes')?.value || 'None';
+
+    const photoIds = ['power_supply', 'wall_connector', 'finished_power', 'wc_tsn', 'breaker_leakage', 'installer_uniform', 'parking_space'];
+    const photosCaptured = photoIds.filter(id => {
+      const box = this.container.querySelector(`.photo-dropzone[data-photo-id="${id}"] .photo-preview-container`);
+      return box && box.style.display !== 'none';
+    }).length;
+
+    const engineerSigned = this.installerSig && !this.installerSig.isEmpty();
+    const clientSigned = this.clientSig && !this.clientSig.isEmpty();
 
     container.innerHTML = `
       <div class="executive-docket-card">
@@ -476,15 +591,32 @@ export class InstallationForm {
 
               <!-- COMMISSIONING TESTS -->
               <tr>
-                <td rowspan="2" class="category-cell">
+                <td rowspan="3" class="category-cell">
                   <div class="cat-title">3. ELECTRICAL TESTS</div>
                 </td>
-                <td class="param-name">Voltage & Grounding Resistance</td>
-                <td class="param-val">No-Load: ${testVoltage} | Grounding: ${testGrounding}</td>
+                <td class="param-name">Voltage (No-Load / Full-Load)</td>
+                <td class="param-val">No-Load: ${testVoltageNoLoad} | Full-Load: ${testVoltageFullLoad}</td>
+              </tr>
+              <tr>
+                <td class="param-name">Grounding & Insulation Resistance</td>
+                <td class="param-val">Grounding: ${testGrounding} | Insulation: ${testInsulation}</td>
               </tr>
               <tr>
                 <td class="param-name">Commissioning Acceptance</td>
                 <td class="param-val">${testStatus}</td>
+              </tr>
+
+              <!-- PHOTO EVIDENCE & SIGN-OFF -->
+              <tr>
+                <td rowspan="2" class="category-cell">
+                  <div class="cat-title">4. EVIDENCE & SIGN-OFF</div>
+                </td>
+                <td class="param-name">Photo Attachments Captured</td>
+                <td class="param-val">${photosCaptured} of ${photoIds.length} Required Photos</td>
+              </tr>
+              <tr>
+                <td class="param-name">Notes & Handover Signatures</td>
+                <td class="param-val">Notes: ${notes} | Engineer: ${engineerSigned ? 'Signed ✓' : 'Pending'} | Client: ${clientSigned ? 'Signed ✓' : 'Pending'}</td>
               </tr>
             </tbody>
           </table>
