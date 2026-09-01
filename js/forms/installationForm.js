@@ -173,6 +173,109 @@ export class InstallationForm {
             </div>
           </div>
         </div>
+
+        <!-- Actual Installation Materials Used (Internal Only) -->
+        <div class="form-card">
+          <div class="form-section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            Actual Installation Materials Used
+            <span class="form-section-subtitle">Internal Only — Not Shown to Client or Summary</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Conduits</label>
+            <div class="grid-3">
+              ${this.renderQtyStepper('actualConduitPvc', 'PVC (Rigid)', this.ocularData?.conduitPvc ?? 0)}
+              ${this.renderQtyStepper('actualConduitEmt', 'EMT', this.ocularData?.conduitEmt ?? 0)}
+              ${this.renderQtyStepper('actualConduitImc', 'IMC', this.ocularData?.conduitImc ?? 0)}
+              ${this.renderQtyStepper('actualConduitRsc', 'RSC', this.ocularData?.conduitRsc ?? 0)}
+              ${this.renderQtyStepper('actualConduitPvcMoulding', 'PVC Moulding', this.ocularData?.conduitPvcMoulding ?? 0)}
+              ${this.renderQtyStepper('actualConduitBlackFlexible', 'Black Coated Flexible', this.ocularData?.conduitBlackFlexible ?? 0)}
+              ${this.renderQtyStepper('actualConduitPvcFlexibleOrange', 'PVC Flexible Orange', this.ocularData?.conduitPvcFlexibleOrange ?? 0)}
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Other Conduit Type (Please Specify Type & Size)</label>
+              <input type="text" class="form-input" id="actualConduitOtherType" name="actualConduitOtherType" value="${this.ocularData?.conduitOtherType || ''}" placeholder="e.g. 1&quot; RSC" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Other Conduit Qty</label>
+              <input type="number" class="form-input" id="actualConduitOtherQty" name="actualConduitOtherQty" value="${this.ocularData?.conduitOtherQty ?? 0}" min="0" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Elbows</label>
+            <div class="grid-3">
+              ${this.renderQtyStepper('actualElbowEmt90', 'EMT Elbow 90°', this.ocularData?.elbowEmt90 ?? 0)}
+              ${this.renderQtyStepper('actualElbowImc90', 'IMC Elbow 90°', this.ocularData?.elbowImc90 ?? 0)}
+              ${this.renderQtyStepper('actualElbowRsc90', 'RSC 90°', this.ocularData?.elbowRsc90 ?? 0)}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Conduit Bodies (LB, LR, LL, C, T)</label>
+            <div class="grid-4">
+              ${this.renderMiniQty('actualBodyLb', 'LB', this.ocularData?.bodyLb ?? 0)}
+              ${this.renderMiniQty('actualBodyLr', 'LR', this.ocularData?.bodyLr ?? 0)}
+              ${this.renderMiniQty('actualBodyLl', 'LL', this.ocularData?.bodyLl ?? 0)}
+              ${this.renderMiniQty('actualBodyC', 'C', this.ocularData?.bodyC ?? 0)}
+              ${this.renderMiniQty('actualBodyT', 'T', this.ocularData?.bodyT ?? 0)}
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              ${this.renderQtyStepper('actualLiquidTightConnectorQty', 'Liquid Tight Connector (Straight Type) Qty', this.ocularData?.liquidTightConnectorQty ?? 0)}
+            </div>
+            <div class="form-group">
+              <label class="form-label">Liquid Tight Flexible Conduit Length</label>
+              <input type="text" class="form-input" id="actualLiquidTightFlexLength" name="actualLiquidTightFlexLength" value="${this.ocularData?.liquidTightFlexLength || ''}" placeholder="e.g. 30cm" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Connectors</label>
+            <div class="grid-2">
+              ${this.renderQtyStepper('actualConnectorEmtSetScrew', 'EMT Set Screw Type', this.ocularData?.connectorEmtSetScrew ?? 0)}
+              ${this.renderQtyStepper('actualConnectorEmtCompression', 'EMT Compression Type', this.ocularData?.connectorEmtCompression ?? 0)}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Coupling</label>
+            <div class="grid-2">
+              ${this.renderQtyStepper('actualCouplingEmtSetScrew', 'EMT Set Screw Type', this.ocularData?.couplingEmtSetScrew ?? 0)}
+              ${this.renderQtyStepper('actualCouplingEmtCompression', 'EMT Compression Type', this.ocularData?.couplingEmtCompression ?? 0)}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Conduit Clamps</label>
+            <div class="grid-3">
+              ${this.renderQtyStepper('actualClampCTwoHole', 'C-Clamp 2-Hole', this.ocularData?.clampCTwoHole ?? 0)}
+              ${this.renderQtyStepper('actualClampCOneHole', 'C-Clamp 1-Hole', this.ocularData?.clampCOneHole ?? 0)}
+              ${this.renderQtyStepper('actualClampStrapMalleable', 'Strap-Malleable Iron 1-Hole', this.ocularData?.clampStrapMalleable ?? 0)}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Electrical Boxes Quantity (PCS)</label>
+            <div class="grid-4">
+              ${this.renderQtyStepper('actualBoxUtility', 'UTILITY', this.ocularData?.boxUtility ?? 0)}
+              ${this.renderQtyStepper('actualBoxSquare', 'SQUARE BOX', this.ocularData?.boxSquare ?? 0)}
+              ${this.renderQtyStepper('actualBoxOctagon', 'OCTAGON BOX', this.ocularData?.boxOctagon ?? 0)}
+              ${this.renderQtyStepper('actualBoxJunction', 'JUNCTION BOX', this.ocularData?.boxJunction ?? 0)}
+            </div>
+
+            <div class="form-group" style="margin-top: 0.75rem;">
+              <label class="form-label">Others Boxes / Enclosures Specify</label>
+              <input type="text" class="form-input" id="actualBoxOthers" name="actualBoxOthers" value="${this.ocularData?.boxOthers || ''}" placeholder="e.g. Weatherproof Enclosure IP65" />
+            </div>
+          </div>
+        </div>
         </div>
         <!-- END STEP 2 -->
 
@@ -739,6 +842,28 @@ export class InstallationForm {
         }, 1000);
       });
     }
+  }
+
+  renderQtyStepper(name, label, defaultValue = 0) {
+    return `
+      <div class="stepper-card">
+        <span class="option-text">${label}</span>
+        <div class="qty-adjuster">
+          <button type="button" class="qty-btn" onclick="this.nextElementSibling.stepDown()">-</button>
+          <input type="number" class="qty-input" id="${name}" name="${name}" value="${defaultValue}" min="0" />
+          <button type="button" class="qty-btn" onclick="this.previousElementSibling.stepUp()">+</button>
+        </div>
+      </div>
+    `;
+  }
+
+  renderMiniQty(name, label, defaultValue = 0) {
+    return `
+      <div class="mini-input-card">
+        <span class="mini-card-label">${label}</span>
+        <input type="number" class="form-input" id="${name}" name="${name}" value="${defaultValue}" min="0" />
+      </div>
+    `;
   }
 
   getFormData() {

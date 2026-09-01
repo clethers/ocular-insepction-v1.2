@@ -203,6 +203,46 @@ class SupabaseService {
     return localSaved;
   }
 
+  // Actual-materials-used fields captured on the Installation form (Equipment
+  // & Testing step) — internal inventory only, deliberately never surfaced in
+  // the client-facing handover summary/certificate. [localKey, column,
+  // isInt] mirrors the naming convention of ocular_inspections' own material
+  // columns with an actual_ prefix, but lives on installation_records since
+  // that's the record this data actually describes.
+  static ACTUAL_MATERIALS_FIELD_MAP = [
+    ['actualConduitPvc', 'actual_pvc_qty', true],
+    ['actualConduitEmt', 'actual_emt_qty', true],
+    ['actualConduitImc', 'actual_imc_qty', true],
+    ['actualConduitRsc', 'actual_conduit_rsc_qty', true],
+    ['actualConduitPvcMoulding', 'actual_conduit_pvc_moulding_qty', true],
+    ['actualConduitBlackFlexible', 'actual_conduit_black_flexible_qty', true],
+    ['actualConduitPvcFlexibleOrange', 'actual_conduit_pvc_flexible_orange_qty', true],
+    ['actualConduitOtherType', 'actual_conduit_other_type', false],
+    ['actualConduitOtherQty', 'actual_conduit_other_qty', true],
+    ['actualLiquidTightConnectorQty', 'actual_liquid_tight_connector_qty', true],
+    ['actualLiquidTightFlexLength', 'actual_liquid_tight_flex_length', false],
+    ['actualElbowEmt90', 'actual_elbow_emt90_qty', true],
+    ['actualElbowImc90', 'actual_elbow_imc90_qty', true],
+    ['actualElbowRsc90', 'actual_elbow_rsc90_qty', true],
+    ['actualBodyLb', 'actual_lb_qty', true],
+    ['actualBodyLr', 'actual_lr_qty', true],
+    ['actualBodyLl', 'actual_ll_qty', true],
+    ['actualBodyC', 'actual_body_c_qty', true],
+    ['actualBodyT', 'actual_t_qty', true],
+    ['actualConnectorEmtSetScrew', 'actual_connector_emt_set_screw_qty', true],
+    ['actualConnectorEmtCompression', 'actual_connector_emt_compression_qty', true],
+    ['actualCouplingEmtSetScrew', 'actual_coupling_emt_set_screw_qty', true],
+    ['actualCouplingEmtCompression', 'actual_coupling_emt_compression_qty', true],
+    ['actualClampCTwoHole', 'actual_clamp_c_two_hole_qty', true],
+    ['actualClampCOneHole', 'actual_clamp_c_one_hole_qty', true],
+    ['actualClampStrapMalleable', 'actual_clamp_strap_malleable_qty', true],
+    ['actualBoxUtility', 'actual_utility_box_qty', true],
+    ['actualBoxSquare', 'actual_square_box_qty', true],
+    ['actualBoxOctagon', 'actual_octagon_box_qty', true],
+    ['actualBoxJunction', 'actual_junction_box_qty', true],
+    ['actualBoxOthers', 'actual_other_boxes_notes', false],
+  ];
+
   async saveInstallationRecord(formData) {
     if (this.isConfigured()) {
       try {
@@ -219,6 +259,17 @@ class SupabaseService {
           client_rep_sig_img: formData.clientRepSigImg,
           status: 'COMMISSIONED'
         };
+
+        for (const [localKey, column, isInt] of SupabaseService.ACTUAL_MATERIALS_FIELD_MAP) {
+          const raw = formData[localKey];
+          if (raw === undefined) continue;
+          if (isInt) {
+            const parsed = Number.parseInt(raw, 10);
+            payload[column] = (raw === '' || raw === null || Number.isNaN(parsed)) ? null : parsed;
+          } else {
+            payload[column] = raw;
+          }
+        }
 
         const { data, error } = await this.client
           .from('installation_records')
