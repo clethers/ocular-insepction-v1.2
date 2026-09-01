@@ -278,10 +278,7 @@ export class OcularForm {
                 <input type="text" class="form-input" id="chargerLocation" name="chargerLocation" placeholder="e.g. Garage Left Wall (Near Main Gate)" />
               </div>
 
-              <div class="form-group">
-                <label class="form-label">Estimated Distance from Tapping Point</label>
-                <input type="text" class="form-input" id="estimateDistance" name="estimateDistance" placeholder="e.g. 14 Meters" />
-              </div>
+              ${this.renderQtyStepper('estimateDistance', 'Estimated Distance from Tapping Point (Meters)')}
             </div>
           </div>
 
@@ -945,7 +942,7 @@ export class OcularForm {
     const grounding = data.groundingSystem || 'YES';
 
     const chargerType = data.recommendedCharger || '7.4kW AC Single-Phase';
-    const distance = data.distanceFromTapping || 'N/A';
+    const distance = data.estimateDistance || 'N/A';
     const pvc = data.pvcQty || 0;
     const emt = data.emtQty || 0;
     const imc = data.imcQty || 0;
