@@ -5,6 +5,7 @@
 
 import { supabaseService } from '../services/supabaseService.js';
 import { FormStorage } from './formStorage.js';
+import { AuthGuard } from './authGuard.js';
 import { auditLogService, AUDIT_CATEGORIES, AUDIT_SEVERITY } from '../services/auditLogService.js';
 import { AppLayout } from './appLayout.js';
 import { ClientDirectory } from './clientDirectory.js';
@@ -13,19 +14,11 @@ export class ManagerWorkspace {
   constructor(container) {
     this.container = container;
     this.activeTab = 'dispatch'; // 'dispatch', 'qa', 'clientsearch', 'calendar', 'tickets', 'materials', 'sms', 'kpis'
-    this.readyItems = [];
-    this.loadData();
+    this.pendingQAItems = [];
+    this.qaLoading = false;
   }
 
-  loadData() {
-    try {
-      this.readyItems = FormStorage.listReadyInstallations() || [];
-    } catch (e) {
-      this.readyItems = [];
-    }
-  }
-
-  render() {
+  async render() {
     this.container.innerHTML = `
       <div class="manager-workspace-wrapper" style="padding: 0;">
 
@@ -43,6 +36,22 @@ export class ManagerWorkspace {
     }
 
     this.bindEvents();
+
+    if (this.activeTab === 'qa' && !this.qaLoading && this.pendingQAItems.length === 0) {
+      await this.loadQAQueue();
+    }
+  }
+
+  async loadQAQueue() {
+    this.qaLoading = true;
+    try {
+      this.pendingQAItems = await supabaseService.fetchPendingQAInspections();
+    } catch (e) {
+      console.warn('[OIMS] Could not fetch pending QA inspections:', e);
+      this.pendingQAItems = [];
+    }
+    this.qaLoading = false;
+    if (this.activeTab === 'qa') this.render();
   }
 
   renderTabStage() {
@@ -114,12 +123,20 @@ export class ManagerWorkspace {
 
   // TAB 2: Audit QA Queue
   renderQATab() {
+    if (this.qaLoading) {
+      return `
+        <div class="form-card" style="text-align: center; padding: 3rem; color: #64748b;">
+          Loading Pending QA Submissions...
+        </div>
+      `;
+    }
+
     return `
       <div class="form-card" style="padding: 1.5rem; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
         <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a; margin-bottom: 1rem;">Pending Ocular Audits Quality Assurance Queue</h3>
-        
+
         <div style="display: flex; flex-direction: column; gap: 1rem;">
-          ${this.readyItems.length > 0 ? this.readyItems.map(item => `
+          ${this.pendingQAItems.length > 0 ? this.pendingQAItems.map(item => `
             <div style="padding: 1.25rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-lg); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);">
               <div>
                 <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
@@ -128,6 +145,9 @@ export class ManagerWorkspace {
                 </div>
                 <div style="font-size: 0.8rem; color: #64748b;">
                   ${item.locationAddress || 'Manila City'} | Breaker: ${item.mainBreaker || '100A'} | Voltage: ${item.voltageSystem || '230V'}
+                </div>
+                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">
+                  Inspected by ${item.inspectedByName || 'Field Inspector'}
                 </div>
               </div>
               <div style="display: flex; gap: 0.5rem;">
@@ -257,6 +277,30 @@ export class ManagerWorkspace {
     `;
   }
 
+  // Persists a QA decision: updates the cloud row (when reachable) and
+  // keeps the local ready-cache in sync either way, so readyList.js /
+  // historyPage.js reflect the new status immediately.
+  async resolveQAItem(item, newStatus, qaNotes = null) {
+    const user = await AuthGuard.getSessionUser();
+    const qaReviewedAt = new Date().toISOString();
+
+    if (item.id) {
+      await supabaseService.updateInspectionStatus(item.id, newStatus, {
+        qaNotes,
+        qaReviewedBy: user?.id || null,
+        qaReviewedAt
+      });
+    }
+
+    FormStorage.saveReadyInstallation({
+      ...item,
+      status: newStatus,
+      qaNotes,
+      qaReviewedBy: user?.id || null,
+      qaReviewedAt
+    });
+  }
+
   bindEvents() {
     // Tab switching
     const tabBtns = this.container.querySelectorAll('.mgr-tab-btn');
@@ -285,32 +329,58 @@ export class ManagerWorkspace {
     // Approve QA button
     const approveBtns = this.container.querySelectorAll('.btn-qa-approve');
     approveBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const rn = btn.getAttribute('data-rn');
-        auditLogService.logEvent({
-          category: AUDIT_CATEGORIES.MANAGER_APPROVAL,
-          eventType: 'AUDIT_APPROVED',
-          description: `Approved Ocular Audit ${rn}. Advanced status to READY_FOR_INSTALLATION.`,
-          severity: AUDIT_SEVERITY.INFO
-        });
-        AppLayout.showToast(`Approved Audit QA for ${rn}`);
+        const item = this.pendingQAItems.find(i => i.rnNo === rn);
+        if (!item) return;
+        btn.disabled = true;
+
+        try {
+          await this.resolveQAItem(item, 'READY_FOR_INSTALLATION');
+          auditLogService.logEvent({
+            category: AUDIT_CATEGORIES.MANAGER_APPROVAL,
+            eventType: 'AUDIT_APPROVED',
+            description: `Approved Ocular Audit ${rn}. Advanced status to READY_FOR_INSTALLATION.`,
+            severity: AUDIT_SEVERITY.INFO
+          });
+          AppLayout.showToast(`Approved Audit QA for ${rn}`);
+          this.pendingQAItems = this.pendingQAItems.filter(i => i.rnNo !== rn);
+          this.render();
+        } catch (e) {
+          console.warn('[OIMS] Could not approve QA item:', e);
+          AppLayout.showToast('Could not approve — check your connection and try again.');
+          btn.disabled = false;
+        }
       });
     });
 
     // Reject QA button
     const rejectBtns = this.container.querySelectorAll('.btn-qa-reject');
     rejectBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const rn = btn.getAttribute('data-rn');
+        const item = this.pendingQAItems.find(i => i.rnNo === rn);
+        if (!item) return;
         const reason = prompt('Enter technical re-inspection review reason:');
         if (!reason) return;
-        auditLogService.logEvent({
-          category: AUDIT_CATEGORIES.MANAGER_APPROVAL,
-          eventType: 'REINSPECTION_REQUESTED',
-          description: `Requested re-inspection for ${rn}. Reason: ${reason}`,
-          severity: AUDIT_SEVERITY.WARNING
-        });
-        AppLayout.showToast(`Re-inspection requested for ${rn}`);
+        btn.disabled = true;
+
+        try {
+          await this.resolveQAItem(item, 'RE_INSPECTION_REQUESTED', reason);
+          auditLogService.logEvent({
+            category: AUDIT_CATEGORIES.MANAGER_APPROVAL,
+            eventType: 'REINSPECTION_REQUESTED',
+            description: `Requested re-inspection for ${rn}. Reason: ${reason}`,
+            severity: AUDIT_SEVERITY.WARNING
+          });
+          AppLayout.showToast(`Re-inspection requested for ${rn}`);
+          this.pendingQAItems = this.pendingQAItems.filter(i => i.rnNo !== rn);
+          this.render();
+        } catch (e) {
+          console.warn('[OIMS] Could not reject QA item:', e);
+          AppLayout.showToast('Could not request re-inspection — check your connection and try again.');
+          btn.disabled = false;
+        }
       });
     });
 

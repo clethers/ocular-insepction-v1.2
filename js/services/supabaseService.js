@@ -72,6 +72,79 @@ class SupabaseService {
     }
   }
 
+  // Customer Care QA queue — submissions awaiting first-pass review, before
+  // they're eligible to appear in the installer's Ready queue.
+  async fetchPendingQAInspections() {
+    if (this.isConfigured()) {
+      try {
+        const { data, error } = await this.withTimeout(
+          this.client
+            .from('ocular_inspections')
+            .select('*')
+            .eq('status', 'PENDING_QA')
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false }),
+          3000,
+          'Fetch pending QA inspections'
+        );
+
+        if (error) throw error;
+        return (data || []).map(item => this.mapSupabaseToLocal(item));
+      } catch (err) {
+        console.warn('[OIMS Supabase] Falling back to local storage cache:', err.message);
+      }
+    }
+
+    try {
+      return (FormStorage.listReadyInstallations() || []).filter(item => item.status === 'PENDING_QA');
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // An inspector's own submissions still moving through the QA pipeline
+  // (awaiting review, or sent back for re-inspection) — cloud-only, since
+  // ownership isn't tracked in the local storage fallback.
+  async fetchMySubmittedInspections(userId) {
+    if (!userId || !this.isConfigured()) return [];
+    try {
+      const { data, error } = await this.withTimeout(
+        this.client
+          .from('ocular_inspections')
+          .select('*')
+          .eq('created_by', userId)
+          .in('status', ['PENDING_QA', 'RE_INSPECTION_REQUESTED'])
+          .is('deleted_at', null)
+          .order('updated_at', { ascending: false }),
+        3000,
+        'Fetch my submitted inspections'
+      );
+
+      if (error) throw error;
+      return (data || []).map(item => this.mapSupabaseToLocal(item));
+    } catch (err) {
+      console.warn('[OIMS Supabase] Could not fetch my submitted inspections:', err.message);
+      return [];
+    }
+  }
+
+  // Advances or rejects a submission out of QA. extra may carry qaNotes /
+  // qaReviewedBy / qaReviewedAt (camelCase — mapped to the qa_* columns).
+  async updateInspectionStatus(id, newStatus, extra = {}) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    const payload = { status: newStatus, updated_at: new Date().toISOString() };
+    if (extra.qaNotes !== undefined) payload.qa_notes = extra.qaNotes;
+    if (extra.qaReviewedBy !== undefined) payload.qa_reviewed_by = extra.qaReviewedBy;
+    if (extra.qaReviewedAt !== undefined) payload.qa_reviewed_at = extra.qaReviewedAt;
+
+    const { error } = await this.withTimeout(
+      this.client.from('ocular_inspections').update(payload).eq('id', id),
+      3000,
+      'Update inspection status'
+    );
+    if (error) throw error;
+  }
+
   async fetchAllInspections() {
     if (this.isConfigured()) {
       try {

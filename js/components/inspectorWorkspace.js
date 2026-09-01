@@ -7,6 +7,8 @@ import { OcularForm } from '../forms/ocularForm.js';
 import { ReadyList } from './readyList.js';
 import { InstallationForm } from '../forms/installationForm.js';
 import { FormStorage } from './formStorage.js';
+import { AuthGuard } from './authGuard.js';
+import { supabaseService } from '../services/supabaseService.js';
 
 export class InspectorWorkspace {
   constructor(container) {
@@ -112,9 +114,46 @@ export class InspectorWorkspace {
     }
   }
 
-  renderHistoryStage(stage) {
+  async renderHistoryStage(stage) {
     const drafts = FormStorage.listDrafts() || [];
+
+    let submissions = [];
+    try {
+      const user = await AuthGuard.getSessionUser();
+      if (user) {
+        submissions = await supabaseService.fetchMySubmittedInspections(user.id);
+      }
+    } catch (e) {
+      console.warn('[OIMS] Could not fetch submitted inspections:', e);
+    }
+
+    // Bail if the tab changed while the fetch above was in flight.
+    if (this.activeTab !== 'history') return;
+
     stage.innerHTML = `
+      ${submissions.length > 0 ? `
+        <div class="form-card" style="padding: 1.5rem; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); margin-bottom: 1.25rem;">
+          <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a; margin-bottom: 1rem;">My Submitted Inspections</h3>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            ${submissions.map(item => `
+              <div style="padding: 1rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.03);">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <strong style="color: #0f172a;">${item.clientName || 'Client'}</strong>
+                    <span class="badge" style="background: ${item.status === 'RE_INSPECTION_REQUESTED' ? 'rgba(244, 63, 94, 0.15)' : 'rgba(245, 158, 11, 0.15)'}; color: ${item.status === 'RE_INSPECTION_REQUESTED' ? '#e11d48' : '#d97706'}; font-size: 0.7rem; font-weight: 800; padding: 0.2rem 0.5rem;">
+                      ${item.status === 'RE_INSPECTION_REQUESTED' ? 'RE-INSPECTION REQUESTED' : 'PENDING QA REVIEW'}
+                    </span>
+                  </div>
+                  <span style="font-size: 0.775rem; color: #64748b; display: block; margin-top: 0.15rem;">RN: ${item.rnNo || 'N/A'}</span>
+                  ${item.status === 'RE_INSPECTION_REQUESTED' && item.qaNotes ? `<span style="font-size: 0.775rem; color: #e11d48; display: block; margin-top: 0.25rem;">Customer Care: "${item.qaNotes}"</span>` : ''}
+                </div>
+                ${item.status === 'RE_INSPECTION_REQUESTED' ? `<button type="button" class="btn btn-secondary btn-resume-submission" data-rn="${item.rnNo}">Resume & Resubmit</button>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
       <div class="form-card" style="padding: 1.5rem; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
         <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a; margin-bottom: 1rem;">Saved Form Drafts & Local Repositories</h3>
         ${drafts.length > 0 ? `
@@ -137,15 +176,32 @@ export class InspectorWorkspace {
       </div>
     `;
 
+    const resumeBtns = stage.querySelectorAll('.btn-resume-submission');
+    resumeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const rn = btn.getAttribute('data-rn');
+        const item = submissions.find(i => i.rnNo === rn);
+        if (!item) return;
+        try {
+          sessionStorage.setItem('oims_resume_ocular', JSON.stringify(item));
+        } catch (e) {
+          console.warn('[OIMS] Could not stash resume payload:', e);
+        }
+        import('../router.js').then(({ Router }) => Router.navigate('/ocular'));
+      });
+    });
+
     const loadBtns = stage.querySelectorAll('.btn-load-draft');
     loadBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         const formId = btn.getAttribute('data-formid');
-        import('../router.js').then(({ Router }) => Router.navigate('/ocular'));
         const draftData = FormStorage.loadDraft(formId);
-        if (draftData && window.ocularFormInstance) {
-          window.ocularFormInstance.populateFormData(draftData.data);
+        try {
+          if (draftData) sessionStorage.setItem('oims_resume_ocular', JSON.stringify(draftData.data));
+        } catch (e) {
+          console.warn('[OIMS] Could not stash draft resume payload:', e);
         }
+        import('../router.js').then(({ Router }) => Router.navigate('/ocular'));
       });
     });
   }

@@ -7,6 +7,7 @@ import { SignaturePad } from '../components/signaturePad.js';
 import { FormStorage } from '../components/formStorage.js';
 import { SAMPLE_OCULAR_DATA } from '../sampleData.js';
 import { supabaseService } from '../services/supabaseService.js';
+import { AuthGuard } from '../components/authGuard.js';
 import { isValidBase64Image } from '../utils/security.js';
 import bannerUrl from '../../assets/ecoworks-banner.png';
 
@@ -616,7 +617,7 @@ export class OcularForm {
 
             <button type="button" class="btn btn-primary" id="btn-mark-ready" style="background: linear-gradient(135deg, var(--ecoworks-green), var(--ecoworks-green-shadow)); color: #fff; display: none; border-color: var(--ecoworks-green-light);">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Mark Ready for Installation →
+              Submit for QA Review →
             </button>
           </div>
         </div>
@@ -629,6 +630,33 @@ export class OcularForm {
     this.setDefaultDateTime();
     this.initMap();
     this.initPhotoUploaders();
+
+    window.ocularFormInstance = this;
+    this.applyResumePayloadIfAny();
+  }
+
+  // Picked up by history.js when the inspector clicks "Resume & Resubmit"
+  // on a rejected submission, or "Load Draft" on a local draft — both stash
+  // their payload in sessionStorage before navigating here so it survives
+  // the route change.
+  applyResumePayloadIfAny() {
+    let raw;
+    try {
+      raw = sessionStorage.getItem('oims_resume_ocular');
+    } catch (e) {
+      return;
+    }
+    if (!raw) return;
+
+    try {
+      sessionStorage.removeItem('oims_resume_ocular');
+      const data = JSON.parse(raw);
+      this.populateFormData(data, { silent: true });
+      const noteSuffix = data.qaNotes ? ` Customer Care noted: "${data.qaNotes}"` : '';
+      this.showToast(`Loaded ${data.rnNo || 'inspection'} for revision.${noteSuffix}`);
+    } catch (e) {
+      console.warn('[OIMS] Could not apply resume payload:', e);
+    }
   }
 
   initPhotoUploaders() {
@@ -1087,10 +1115,10 @@ export class OcularForm {
       });
     }
 
-    // Mark Ready for Installation
+    // Submit for Customer Care QA Review
     const readyBtn = document.getElementById('btn-mark-ready');
     if (readyBtn) {
-      readyBtn.addEventListener('click', () => {
+      readyBtn.addEventListener('click', async () => {
         // Auto-update Time End to exact completion time
         const timeEndElem = document.getElementById('timeEnd');
         if (timeEndElem) {
@@ -1099,13 +1127,21 @@ export class OcularForm {
         }
 
         const formData = this.getFormData();
-        formData.status = 'READY_FOR_INSTALLATION';
+        formData.status = 'PENDING_QA';
+        // Clear any prior QA review trail so a resubmission after a
+        // rejection reads as a fresh, unreviewed submission.
+        formData.qaNotes = null;
+        formData.qaReviewedBy = null;
+        formData.qaReviewedAt = null;
+
+        const user = await AuthGuard.getSessionUser();
+        if (user) formData.createdBy = user.id;
+
         FormStorage.saveReadyInstallation(formData);
-        supabaseService.saveOcularInspection(formData);
-        this.showToast('Inspection marked READY FOR INSTALLATION! Synced to Supabase Cloud...');
+        await supabaseService.saveOcularInspection(formData);
+        this.showToast('Submitted for Customer Care QA Review! Synced to Supabase Cloud...');
         setTimeout(() => {
-          const readyNavBtn = document.querySelector('[data-view="ready"]');
-          if (readyNavBtn) readyNavBtn.click();
+          import('../router.js').then(({ Router }) => Router.navigate('/ocular/history'));
         }, 1200);
       });
     }
@@ -1161,41 +1197,40 @@ export class OcularForm {
   }
 
   populateSampleData() {
-    const data = SAMPLE_OCULAR_DATA;
+    this.populateFormData(SAMPLE_OCULAR_DATA, { silent: true });
+    this.showToast('Sample form data (Esperanza Bacolod) loaded successfully!');
+  }
+
+  // Shared field-hydration routine: fills every input/select whose id
+  // matches a data key, checks the matching radio group options, restores
+  // photos, and restores signatures if the pads are already initialized.
+  // Used by the sample-data loader, "Load Draft", and "Resume & Resubmit".
+  populateFormData(data, { silent = false } = {}) {
+    if (!data) return;
+
     for (const [key, value] of Object.entries(data)) {
+      if (key === 'photos') continue;
       const field = document.getElementById(key);
-      if (field) {
+      if (field && value !== undefined && value !== null) {
         field.value = value;
       }
     }
 
-    // Radio fields
-    if (data.voltageSystem) {
-      const radio = document.querySelector(`input[name="voltageSystem"][value="${data.voltageSystem}"]`);
-      if (radio) radio.checked = true;
-    }
-    if (data.spareBreaker) {
-      const radio = document.querySelector(`input[name="spareBreaker"][value="${data.spareBreaker}"]`);
-      if (radio) radio.checked = true;
-    }
-    if (data.spaceProvision) {
-      const radio = document.querySelector(`input[name="spaceProvision"][value="${data.spaceProvision}"]`);
-      if (radio) radio.checked = true;
-    }
-    if (data.groundingSystem) {
-      const radio = document.querySelector(`input[name="groundingSystem"][value="${data.groundingSystem}"]`);
-      if (radio) radio.checked = true;
-    }
-    if (data.hasNema3r) {
-      const radio = document.querySelector(`input[name="hasNema3r"][value="${data.hasNema3r}"]`);
-      if (radio) radio.checked = true;
-    }
+    ['voltageSystem', 'spareBreaker', 'spaceProvision', 'groundingSystem', 'hasNema3r'].forEach((name) => {
+      if (data[name]) {
+        const radio = document.querySelector(`input[name="${name}"][value="${data[name]}"]`);
+        if (radio) radio.checked = true;
+      }
+    });
 
     if (data.photos) {
       this.populatePhotos(data.photos);
     }
 
-    this.showToast('Sample form data (Esperanza Bacolod) loaded successfully!');
+    if (data.inspectorSigImg && this.inspectorSig) this.inspectorSig.fromDataURL(data.inspectorSigImg);
+    if (data.witnessSigImg && this.witnessSig) this.witnessSig.fromDataURL(data.witnessSigImg);
+
+    if (!silent) this.showToast('Form data loaded successfully!');
   }
 
   saveFormDraft() {

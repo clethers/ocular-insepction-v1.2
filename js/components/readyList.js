@@ -33,7 +33,11 @@ export class ReadyList {
     }
 
     try {
-      savedReadyItems = FormStorage.listReadyInstallations() || [];
+      // FormStorage's local cache is status-agnostic (it also holds items
+      // still PENDING_QA or sent back RE_INSPECTION_REQUESTED) — only the
+      // ones actually cleared by Customer Care belong in this queue.
+      savedReadyItems = (FormStorage.listReadyInstallations() || [])
+        .filter(item => item.status === 'READY_FOR_INSTALLATION');
     } catch (e) {
       console.warn('[OIMS] Could not fetch saved installations:', e);
     }
