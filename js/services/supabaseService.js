@@ -252,6 +252,7 @@ class SupabaseService {
     ['voltageSystem', 'voltage_system'],
     ['voltageSpecify', 'voltage_specify'],
     ['mainBreaker', 'main_breaker'],
+    ['mainBreakerOther', 'main_breaker_other'],
     ['noOfBranches', 'no_branches'],
     ['spareBreaker', 'spare_breaker'],
     ['spaceProvision', 'space_provision'],

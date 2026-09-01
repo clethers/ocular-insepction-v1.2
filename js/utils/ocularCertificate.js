@@ -88,7 +88,7 @@ export function renderCertificateHTML(data) {
         </td>
       </tr>
       <tr>
-        <td width="50%"><span class="cert-label">MAIN DISTRIBUTION BREAKER:</span> <span class="cert-value">${escapeHTML(data.mainBreaker || 'N/A')}</span></td>
+        <td width="50%"><span class="cert-label">MAIN DISTRIBUTION BREAKER:</span> <span class="cert-value">${resolveOther(data.mainBreaker, data.mainBreakerOther)}</span></td>
         <td width="50%"><span class="cert-label">NO. OF BRANCH CIRCUITS:</span> <span class="cert-value">${escapeHTML(data.noOfBranches || '0')} Branches</span></td>
       </tr>
       <tr>

@@ -272,7 +272,7 @@
   background: #ffffff;
   border: 1px solid var(--border-subtle);
   border-radius: 50%;
-  color: var(--text-primary);
+  color: #1e293b;
   width: 32px;
   height: 32px;
   font-size: 1.15rem;
@@ -302,7 +302,7 @@
   border: none;
   background: transparent;
   text-align: center;
-  color: var(--text-primary);
+  color: #1e293b;
   font-family: var(--font-sans);
   font-weight: 700;
   font-size: 1.05rem;

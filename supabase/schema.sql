@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS public.ocular_inspections (
     voltage_system VARCHAR(50),
     voltage_specify VARCHAR(100),
     main_breaker VARCHAR(100),
+    main_breaker_other VARCHAR(100),
     no_branches INT DEFAULT 0,
     spare_breaker VARCHAR(10) DEFAULT 'YES',
     space_provision VARCHAR(10) DEFAULT 'YES',

@@ -15,6 +15,7 @@ const BREAKER_BRAND_OPTIONS = ['GE', 'Schneider', 'ABB', 'Shihlin', 'Koten', 'Ro
 const BREAKER_MOUNTING_OPTIONS = ['Bolt-on', 'Plug-in', 'DIN Rail Mounted', 'Fixed/Panel-Mounted Type'];
 const BREAKER_DESIGN_OPTIONS = ['MCB', 'MCCB'];
 const BREAKER_POLE_OPTIONS = ['Single Pole (1P)', 'Double Pole (2P)', 'Three Pole (3P)', 'Four-Pole (4P)'];
+const MAIN_BREAKER_OPTIONS = ['40A', '60A', '80A', '100A', '150A', '175A', '200A', '250A'];
 
 export class OcularForm {
   constructor(containerElement) {
@@ -148,22 +149,16 @@ export class OcularForm {
           </div>
 
           <!-- Main Distribution Panelboard Card -->
-          <div class="form-card">
+          <div class="form-card" id="main-distribution-panelboard-card">
             <div class="form-section-title">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
               Main Distribution Panelboard
             </div>
 
             <div class="grid-2">
-              <div class="form-group">
-                <label class="form-label">Main Breaker (Please Specify)</label>
-                <input type="text" class="form-input" id="mainBreaker" name="mainBreaker" placeholder="e.g. 60A 2P 230V Bolt-On" />
-              </div>
+              ${this.renderDropdownWithOther('mainBreaker', 'Main Breaker (Please Specify)', MAIN_BREAKER_OPTIONS)}
 
-              <div class="form-group">
-                <label class="form-label">No. of Branches (Please Specify)</label>
-                <input type="text" class="form-input" id="noOfBranches" name="noOfBranches" placeholder="e.g. 8 Circuits" />
-              </div>
+              ${this.renderQtyStepper('noOfBranches', 'No. of Branches (Please Specify)')}
             </div>
 
             <div class="grid-2">
@@ -945,7 +940,7 @@ export class OcularForm {
     const voltage = data.voltageSystem === '220_ll' ? '220 VAC, 1 Ø, L-L' :
                   data.voltageSystem === '220_lg' ? '220 VAC, 1 Ø, L-G' :
                   (data.voltageSpecify || 'Custom System');
-    const mainBreaker = data.mainBreaker || 'Not Specified';
+    const mainBreaker = data.mainBreaker === 'OTHER' ? (data.mainBreakerOther || 'Not Specified') : (data.mainBreaker || 'Not Specified');
     const spareBreaker = data.spareBreaker || 'YES';
     const grounding = data.groundingSystem || 'YES';
 
@@ -1184,13 +1179,18 @@ export class OcularForm {
       });
     });
 
-    // Toggle NEMA 3R Enclosure detail fields
+    // Toggle NEMA 3R Enclosure detail fields, and hide Main Distribution
+    // Panelboard when a dedicated NEMA 3R enclosure bypasses it
     const nema3rRadios = document.querySelectorAll('input[name="hasNema3r"]');
     nema3rRadios.forEach(radio => {
       radio.addEventListener('change', (e) => {
         const detailGroup = document.getElementById('nema3r-detail-group');
         if (detailGroup) {
           detailGroup.style.display = e.target.value === 'YES' ? 'block' : 'none';
+        }
+        const panelboardCard = document.getElementById('main-distribution-panelboard-card');
+        if (panelboardCard) {
+          panelboardCard.style.display = e.target.value === 'YES' ? 'none' : 'block';
         }
       });
     });
