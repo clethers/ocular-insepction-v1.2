@@ -51,6 +51,27 @@ export class OcularForm {
         </div>
       </div>
 
+      <!-- Feeder Path Choice Overlay: gates Step 2 until Main Distribution vs NEMA 3R is picked -->
+      <div class="modal-overlay no-print" id="feeder-path-overlay" style="display: none;">
+        <div class="modal-dialog">
+          <h3 class="modal-title">Which feeder path applies to this installation?</h3>
+          <p class="modal-subtitle">This determines which section of Feeder &amp; Panel you'll fill out.</p>
+          <div class="modal-choice-grid">
+            <button type="button" class="modal-choice-btn" data-feeder-choice="NO">
+              <span class="modal-choice-title">Main Distribution</span>
+              <span class="modal-choice-desc">Standard incoming panelboard feeder</span>
+            </button>
+            <button type="button" class="modal-choice-btn" data-feeder-choice="YES">
+              <span class="modal-choice-title">NEMA 3R Enclosure</span>
+              <span class="modal-choice-desc">Dedicated charger breaker, bypasses main panel</span>
+            </button>
+          </div>
+          <div class="modal-footer" id="feeder-path-overlay-footer" style="display: none;">
+            <button type="button" class="btn btn-outline" id="btn-cancel-feeder-path">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <form id="ocular-form-element">
         <!-- STEP 1: CLIENT & HEADER INFORMATION -->
         <div class="wizard-pane" id="pane-step-1">
@@ -230,17 +251,12 @@ export class OcularForm {
             </div>
 
             <div class="form-group">
-              <label class="form-label">Is There a NEMA 3R Enclosure?</label>
-              <div class="option-grid">
-                <label class="custom-option">
-                  <input type="radio" name="hasNema3r" value="YES" />
-                  <span class="option-text">YES</span>
-                </label>
-                <label class="custom-option">
-                  <input type="radio" name="hasNema3r" value="NO" checked />
-                  <span class="option-text">NO</span>
-                </label>
+              <label class="form-label">Feeder Path Selected</label>
+              <div class="feeder-path-readout">
+                <span class="feeder-path-badge" id="feederPathBadge">Main Distribution</span>
+                <button type="button" class="btn btn-outline" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" id="btn-change-feeder-path">Change</button>
               </div>
+              <input type="hidden" id="hasNema3r" name="hasNema3r" value="NO" />
             </div>
 
             <div id="nema3r-detail-group" style="display: none;">
@@ -895,6 +911,14 @@ export class OcularForm {
       readyBtn.style.display = stepNum === this.totalSteps ? 'inline-flex' : 'none';
     }
 
+    // Gate Step 2 behind the Feeder Path Choice Overlay until it's answered
+    if (stepNum === 2) {
+      const hidden = document.getElementById('hasNema3r');
+      if (hidden && hidden.dataset.answered !== 'true') {
+        this.showFeederPathOverlay({ blocking: true });
+      }
+    }
+
     // Auto-stamp Time Start when leaving Step 1 or navigating past it
     if (stepNum > 1) {
       const timeStartElem = document.getElementById('timeStart');
@@ -1176,25 +1200,79 @@ export class OcularForm {
       });
     });
 
-    // Toggle NEMA 3R Enclosure detail fields, and hide Main Distribution
-    // Panelboard when a dedicated NEMA 3R enclosure bypasses it
-    const nema3rRadios = document.querySelectorAll('input[name="hasNema3r"]');
-    nema3rRadios.forEach(radio => {
-      radio.addEventListener('change', (e) => {
-        const detailGroup = document.getElementById('nema3r-detail-group');
-        if (detailGroup) {
-          detailGroup.style.display = e.target.value === 'YES' ? 'block' : 'none';
-        }
-        const panelboardCard = document.getElementById('main-distribution-panelboard-card');
-        if (panelboardCard) {
-          const isYes = e.target.value === 'YES';
-          panelboardCard.style.display = isYes ? 'none' : 'block';
-          if (isYes) {
-            this.showToast('Main Distribution Panelboard hidden — NEMA 3R enclosure bypasses it.');
-          }
-        }
+    // Feeder Path Choice Overlay: picking Main Distribution vs NEMA 3R Enclosure
+    // drives which section of Feeder & Panel is shown (see goToStep and
+    // applyFeederPathChoice). First-time entry into Step 2 blocks dismissal;
+    // reopening via "Change" afterward does not.
+    document.querySelectorAll('.modal-choice-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.applyFeederPathChoice(btn.getAttribute('data-feeder-choice'));
       });
     });
+
+    const changeFeederBtn = document.getElementById('btn-change-feeder-path');
+    if (changeFeederBtn) {
+      changeFeederBtn.addEventListener('click', () => this.showFeederPathOverlay({ blocking: false }));
+    }
+
+    const cancelFeederBtn = document.getElementById('btn-cancel-feeder-path');
+    if (cancelFeederBtn) {
+      cancelFeederBtn.addEventListener('click', () => this.hideFeederPathOverlay());
+    }
+
+    const feederOverlay = document.getElementById('feeder-path-overlay');
+    if (feederOverlay) {
+      feederOverlay.addEventListener('click', (e) => {
+        if (e.target === feederOverlay && feederOverlay.dataset.blocking !== 'true') {
+          this.hideFeederPathOverlay();
+        }
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const overlay = document.getElementById('feeder-path-overlay');
+      if (overlay && overlay.style.display !== 'none' && overlay.dataset.blocking !== 'true') {
+        this.hideFeederPathOverlay();
+      }
+    });
+  }
+
+  showFeederPathOverlay({ blocking }) {
+    const overlay = document.getElementById('feeder-path-overlay');
+    if (!overlay) return;
+    overlay.dataset.blocking = blocking ? 'true' : 'false';
+    const footer = document.getElementById('feeder-path-overlay-footer');
+    if (footer) footer.style.display = blocking ? 'none' : 'flex';
+    overlay.style.display = 'flex';
+  }
+
+  hideFeederPathOverlay() {
+    const overlay = document.getElementById('feeder-path-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  applyFeederPathChoice(value) {
+    const hidden = document.getElementById('hasNema3r');
+    if (hidden) {
+      hidden.value = value;
+      hidden.dataset.answered = 'true';
+    }
+    this.syncFeederPathVisibility(value);
+    this.hideFeederPathOverlay();
+  }
+
+  // Applies a feeder-path answer's visual effect without opening the overlay
+  // or touching the "answered" flag — used both by the live choice above and
+  // by populateFormData() when restoring an already-answered draft.
+  syncFeederPathVisibility(value) {
+    const isYes = value === 'YES';
+    const detailGroup = document.getElementById('nema3r-detail-group');
+    if (detailGroup) detailGroup.style.display = isYes ? 'block' : 'none';
+    const panelboardCard = document.getElementById('main-distribution-panelboard-card');
+    if (panelboardCard) panelboardCard.style.display = isYes ? 'none' : 'block';
+    const badge = document.getElementById('feederPathBadge');
+    if (badge) badge.textContent = isYes ? 'NEMA 3R Enclosure' : 'Main Distribution';
   }
 
   populateSampleData() {
@@ -1217,12 +1295,24 @@ export class OcularForm {
       }
     }
 
-    ['voltageSystem', 'spareBreaker', 'spaceProvision', 'groundingSystem', 'hasNema3r'].forEach((name) => {
+    ['voltageSystem', 'spareBreaker', 'spaceProvision', 'groundingSystem'].forEach((name) => {
       if (data[name]) {
         const radio = document.querySelector(`input[name="${name}"][value="${data[name]}"]`);
         if (radio) radio.checked = true;
       }
     });
+
+    // hasNema3r is answered via the Feeder Path Choice Overlay, not a radio —
+    // restoring an already-answered draft applies its effect silently
+    // (marking it answered) rather than popping the overlay again.
+    if (data.hasNema3r) {
+      const hidden = document.getElementById('hasNema3r');
+      if (hidden) {
+        hidden.value = data.hasNema3r;
+        hidden.dataset.answered = 'true';
+      }
+      this.syncFeederPathVisibility(data.hasNema3r);
+    }
 
     if (data.photos) {
       this.populatePhotos(data.photos);
