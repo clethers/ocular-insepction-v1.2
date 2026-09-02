@@ -1187,7 +1187,11 @@ export class OcularForm {
         }
         const panelboardCard = document.getElementById('main-distribution-panelboard-card');
         if (panelboardCard) {
-          panelboardCard.style.display = e.target.value === 'YES' ? 'none' : 'block';
+          const isYes = e.target.value === 'YES';
+          panelboardCard.style.display = isYes ? 'none' : 'block';
+          if (isYes) {
+            this.showToast('Main Distribution Panelboard hidden — NEMA 3R enclosure bypasses it.');
+          }
         }
       });
     });
