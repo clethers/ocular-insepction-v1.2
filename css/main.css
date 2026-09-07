@@ -275,6 +275,17 @@ a {
   color: #ffffff;
 }
 
+.sidebar-nav-btn.disabled {
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.sidebar-nav-btn.disabled svg {
+  color: var(--text-muted);
+}
+
 .sidebar-counter-badge {
   margin-left: auto;
   font-size: 0.7rem;
