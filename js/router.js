@@ -136,7 +136,7 @@ export class Router {
         return '/admin/dashboard';
       case USER_ROLES.CUSTOMER_CARE_MANAGER:
       case USER_ROLES.LEAD_ENGINEER:
-        return '/manager/dispatch';
+        return '/manager/qa';
       case USER_ROLES.FIELD_INSPECTOR:
       default:
         return '/ocular';
@@ -205,7 +205,7 @@ export class Router {
   }
 
   static async renderManagerWorkspace(pathname) {
-    const tabMatch = pathname.replace('/manager', '').replace('/', '') || 'dispatch';
+    const tabMatch = pathname.replace('/manager', '').replace('/', '') || 'qa';
     const titleMap = {
       dispatch: 'Workload & Field Dispatch Command Center',
       qa: 'Audit QA Review Queue',

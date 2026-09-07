@@ -136,7 +136,7 @@ export class AuthGuard {
         return isHtmlPath ? './admin.html?tab=dashboard' : '/admin/dashboard';
       case USER_ROLES.CUSTOMER_CARE_MANAGER:
       case USER_ROLES.LEAD_ENGINEER:
-        return isHtmlPath ? './manager.html' : '/manager/dispatch';
+        return isHtmlPath ? './manager.html' : '/manager/qa';
       case USER_ROLES.FIELD_INSPECTOR:
       default:
         return isHtmlPath ? './ocular.html' : '/ocular';

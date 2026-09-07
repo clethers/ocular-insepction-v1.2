@@ -13,7 +13,7 @@ import { ClientDirectory } from './clientDirectory.js';
 export class ManagerWorkspace {
   constructor(container) {
     this.container = container;
-    this.activeTab = 'dispatch'; // 'dispatch', 'qa', 'clientsearch', 'calendar', 'tickets', 'materials', 'sms', 'kpis'
+    this.activeTab = 'qa'; // 'dispatch', 'qa', 'clientsearch', 'calendar', 'tickets', 'materials', 'sms', 'kpis' — qa is the only tab wired to real data, so it's the default landing tab
     this.pendingQAItems = [];
     this.qaLoading = false;
   }
