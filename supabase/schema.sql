@@ -163,19 +163,28 @@ CREATE TABLE IF NOT EXISTS public.ocular_inspections (
     -- Photo Attachments (Proposed Layout, Tapping Point, Wiring/Conduit, EV Location)
     photo_attachments JSONB DEFAULT '{}'::jsonb,
 
-    -- Record Pipeline Status
-    status VARCHAR(50) DEFAULT 'READY_FOR_INSTALLATION',
+    -- Record Pipeline Status (submissions start at PENDING_QA and only reach
+    -- READY_FOR_INSTALLATION once Customer Care approves — see
+    -- migrations/2026-09-01-qa-review-workflow.sql)
+    status VARCHAR(50) DEFAULT 'PENDING_QA',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 
     -- Archiving (soft delete) — NULL means active/visible, a timestamp means archived
-    deleted_at TIMESTAMPTZ DEFAULT NULL
+    deleted_at TIMESTAMPTZ DEFAULT NULL,
+
+    -- Customer Care QA Review
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    qa_notes TEXT,
+    qa_reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    qa_reviewed_at TIMESTAMPTZ
 );
 
 -- Indexing for fast search queries
 CREATE INDEX IF NOT EXISTS idx_ocular_rn_no ON public.ocular_inspections(rn_no);
 CREATE INDEX IF NOT EXISTS idx_ocular_status ON public.ocular_inspections(status);
 CREATE INDEX IF NOT EXISTS idx_ocular_client ON public.ocular_inspections(client_name);
+CREATE INDEX IF NOT EXISTS idx_ocular_created_by ON public.ocular_inspections(created_by);
 
 -- ----------------------------------------------------------------------------
 -- 3. Installation & Commissioning Records Table

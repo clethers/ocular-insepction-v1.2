@@ -366,7 +366,11 @@ class SupabaseService {
     ['inspectorSigImg', 'inspector_sig_img'],
     ['witnessedByName', 'witnessed_by_name'],
     ['witnessSigImg', 'witness_sig_img'],
-    ['boxOthers', 'other_boxes_notes']
+    ['boxOthers', 'other_boxes_notes'],
+    ['createdBy', 'created_by'],
+    ['qaNotes', 'qa_notes'],
+    ['qaReviewedBy', 'qa_reviewed_by'],
+    ['qaReviewedAt', 'qa_reviewed_at']
   ];
 
   // Columns in supabase/schema.sql's ocular_inspections table that are typed
@@ -439,7 +443,7 @@ class SupabaseService {
       }
     }
     payload.photo_attachments = data.photos || {};
-    payload.status = data.status || 'READY_FOR_INSTALLATION';
+    payload.status = data.status || 'PENDING_QA';
     return payload;
   }
 
