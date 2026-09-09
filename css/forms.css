@@ -1478,6 +1478,7 @@
   align-items: flex-start;
   gap: 0.35rem;
   text-align: left;
+  font-family: var(--font-sans);
   background: var(--bg-input);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -1490,6 +1491,12 @@
   border-color: var(--ecoworks-blue-light);
   background: var(--bg-card-hover);
   transform: translateY(-1px);
+}
+
+.modal-choice-btn.selected {
+  border-color: var(--ecoworks-blue);
+  background: rgba(0, 174, 239, 0.1);
+  box-shadow: 0 0 0 1px var(--ecoworks-blue);
 }
 
 .modal-choice-title {

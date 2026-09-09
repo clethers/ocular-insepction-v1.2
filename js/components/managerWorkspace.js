@@ -37,6 +37,7 @@ export class ManagerWorkspace {
           <div id="qa-approve-content"></div>
         </div>
       </div>
+
     `;
 
     if (this.activeTab === 'clientsearch') {
@@ -180,17 +181,6 @@ export class ManagerWorkspace {
     `;
   }
 
-  renderTeamSelect(item) {
-    const team = item.assignedTeam || '';
-    return `
-      <select class="form-select qa-team-select" data-rn="${item.rnNo}" style="font-size: 0.775rem; padding: 0.4rem 0.6rem;">
-        <option value="" ${team === '' ? 'selected' : ''}>Assign Team...</option>
-        <option value="TEAM_1" ${team === 'TEAM_1' ? 'selected' : ''}>Inspection Team 1</option>
-        <option value="TEAM_2" ${team === 'TEAM_2' ? 'selected' : ''}>Inspection Team 2</option>
-      </select>
-    `;
-  }
-
   renderQACardView() {
     return `
       <div style="display: flex; flex-direction: column; gap: 1rem;">
@@ -209,7 +199,6 @@ export class ManagerWorkspace {
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-              ${this.renderTeamSelect(item)}
               <button type="button" class="btn btn-secondary btn-qa-reject" data-rn="${item.rnNo}" style="padding: 0.45rem 0.75rem; font-size: 0.775rem;">Request Re-inspection</button>
               <button type="button" class="btn btn-primary btn-qa-approve" data-rn="${item.rnNo}" style="padding: 0.45rem 0.85rem; font-size: 0.775rem;">Approve Audit QA</button>
             </div>
@@ -230,7 +219,6 @@ export class ManagerWorkspace {
               <th>Location</th>
               <th>Breaker / Voltage</th>
               <th>Inspector</th>
-              <th>Team</th>
               <th style="text-align: right;">Actions</th>
             </tr>
           </thead>
@@ -242,7 +230,6 @@ export class ManagerWorkspace {
                 <td style="color: #64748b;">${item.locationAddress || 'Manila City'}</td>
                 <td style="color: #64748b;">${item.mainBreaker || '100A'} / ${item.voltageSystem || '230V'}</td>
                 <td style="color: #64748b;">${item.inspectedByName || 'Field Inspector'}</td>
-                <td>${this.renderTeamSelect(item)}</td>
                 <td style="text-align: right; white-space: nowrap;">
                   <button type="button" class="btn-link btn-qa-reject" data-rn="${item.rnNo}" style="color: #dc2626;">Request Re-inspection</button>
                   <button type="button" class="btn-link btn-qa-approve" data-rn="${item.rnNo}">Approve</button>
@@ -375,7 +362,9 @@ export class ManagerWorkspace {
     const content = this.container.querySelector('#qa-approve-content');
     if (!overlay || !content) return;
 
-    const teamLabel = item.assignedTeam === 'TEAM_1' ? 'Inspection Team 1' : item.assignedTeam === 'TEAM_2' ? 'Inspection Team 2' : 'Not yet assigned';
+    // Tracks the team choice made inside this overlay until Confirm Approval
+    // is pressed — starts from whatever's already saved on the record.
+    this.pendingApproveTeam = item.assignedTeam || '';
 
     content.innerHTML = `
       <h3 class="modal-title">Approve Audit QA?</h3>
@@ -392,9 +381,16 @@ export class ManagerWorkspace {
         <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">
           Inspected by ${item.inspectedByName || 'Field Inspector'}
         </div>
-        <div style="font-size: 0.8rem; color: #0f172a; margin-top: 0.6rem; font-weight: 700;">
-          Assigned Team: <span style="color: ${item.assignedTeam ? 'var(--ecoworks-blue)' : '#94a3b8'};">${teamLabel}</span>
-        </div>
+      </div>
+
+      <label class="form-label" style="font-size: 0.8rem;">Assign Inspection Team</label>
+      <div class="modal-choice-grid" id="qa-approve-team-grid" style="margin-top: 0.5rem; margin-bottom: 1.25rem;">
+        <button type="button" class="modal-choice-btn ${item.assignedTeam === 'TEAM_1' ? 'selected' : ''}" data-team-choice="TEAM_1">
+          <span class="modal-choice-title">Inspection Team 1</span>
+        </button>
+        <button type="button" class="modal-choice-btn ${item.assignedTeam === 'TEAM_2' ? 'selected' : ''}" data-team-choice="TEAM_2">
+          <span class="modal-choice-title">Inspection Team 2</span>
+        </button>
       </div>
 
       <div class="modal-footer">
@@ -403,6 +399,12 @@ export class ManagerWorkspace {
       </div>
     `;
 
+    content.querySelectorAll('.modal-choice-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.pendingApproveTeam = btn.getAttribute('data-team-choice');
+        content.querySelectorAll('.modal-choice-btn').forEach(b => b.classList.toggle('selected', b === btn));
+      });
+    });
     content.querySelector('#btn-cancel-qa-approve').addEventListener('click', () => this.closeApproveOverlay());
     content.querySelector('#btn-confirm-qa-approve').addEventListener('click', (e) => this.confirmApprove(item, e.currentTarget));
 
@@ -416,10 +418,15 @@ export class ManagerWorkspace {
 
   async confirmApprove(item, btn) {
     const rn = item.rnNo;
+    const team = this.pendingApproveTeam || '';
     btn.disabled = true;
     btn.textContent = 'Approving...';
 
     try {
+      if (team !== (item.assignedTeam || '')) {
+        await supabaseService.assignInspectionTeam(item.id, team || null);
+        item.assignedTeam = team;
+      }
       await this.resolveQAItem(item, 'READY_FOR_INSTALLATION');
       auditLogService.logEvent({
         category: AUDIT_CATEGORIES.MANAGER_APPROVAL,
@@ -485,31 +492,6 @@ export class ManagerWorkspace {
       btn.addEventListener('click', () => {
         this.qaViewMode = btn.getAttribute('data-view');
         this.render();
-      });
-    });
-
-    // QA team assignment dropdown
-    const teamSelects = this.container.querySelectorAll('.qa-team-select');
-    teamSelects.forEach(select => {
-      select.addEventListener('change', async () => {
-        const rn = select.getAttribute('data-rn');
-        const item = this.pendingQAItems.find(i => i.rnNo === rn);
-        if (!item) return;
-        const team = select.value;
-        select.disabled = true;
-
-        try {
-          await supabaseService.assignInspectionTeam(item.id, team || null);
-          item.assignedTeam = team;
-          const teamLabel = team === 'TEAM_1' ? 'Inspection Team 1' : team === 'TEAM_2' ? 'Inspection Team 2' : 'unassigned';
-          AppLayout.showToast(`${rn} assigned to ${teamLabel}`);
-        } catch (e) {
-          console.warn('[OIMS] Could not assign inspection team:', e);
-          AppLayout.showToast('Could not save team assignment — check your connection and try again.');
-          select.value = item.assignedTeam || '';
-        } finally {
-          select.disabled = false;
-        }
       });
     });
 
