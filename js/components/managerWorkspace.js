@@ -30,6 +30,13 @@ export class ManagerWorkspace {
         </div>
 
       </div>
+
+      <!-- Approve Audit QA Confirmation Overlay -->
+      <div class="modal-overlay no-print" id="qa-approve-overlay" style="display: none;">
+        <div class="modal-dialog" style="max-width: 460px;">
+          <div id="qa-approve-content"></div>
+        </div>
+      </div>
     `;
 
     if (this.activeTab === 'clientsearch') {
@@ -360,6 +367,78 @@ export class ManagerWorkspace {
     `;
   }
 
+  openApproveOverlay(rn) {
+    const item = this.pendingQAItems.find(i => i.rnNo === rn);
+    if (!item) return;
+
+    const overlay = this.container.querySelector('#qa-approve-overlay');
+    const content = this.container.querySelector('#qa-approve-content');
+    if (!overlay || !content) return;
+
+    const teamLabel = item.assignedTeam === 'TEAM_1' ? 'Inspection Team 1' : item.assignedTeam === 'TEAM_2' ? 'Inspection Team 2' : 'Not yet assigned';
+
+    content.innerHTML = `
+      <h3 class="modal-title">Approve Audit QA?</h3>
+      <p class="modal-subtitle">This advances the record to Ready for Installation.</p>
+
+      <div style="margin: 1rem 0; padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md);">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+          <strong style="color: #0f172a;">${item.clientName || 'Commercial Client'}</strong>
+          <span class="badge" style="background: rgba(0, 174, 239, 0.15); color: var(--ecoworks-blue); font-size: 0.725rem; font-weight: 700; padding: 0.2rem 0.5rem;">${item.rnNo || 'N/A'}</span>
+        </div>
+        <div style="font-size: 0.8rem; color: #64748b;">
+          ${item.locationAddress || 'Manila City'} | Breaker: ${item.mainBreaker || '100A'} | Voltage: ${item.voltageSystem || '230V'}
+        </div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">
+          Inspected by ${item.inspectedByName || 'Field Inspector'}
+        </div>
+        <div style="font-size: 0.8rem; color: #0f172a; margin-top: 0.6rem; font-weight: 700;">
+          Assigned Team: <span style="color: ${item.assignedTeam ? 'var(--ecoworks-blue)' : '#94a3b8'};">${teamLabel}</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="btn-cancel-qa-approve">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-qa-approve">Confirm Approval</button>
+      </div>
+    `;
+
+    content.querySelector('#btn-cancel-qa-approve').addEventListener('click', () => this.closeApproveOverlay());
+    content.querySelector('#btn-confirm-qa-approve').addEventListener('click', (e) => this.confirmApprove(item, e.currentTarget));
+
+    overlay.style.display = 'flex';
+  }
+
+  closeApproveOverlay() {
+    const overlay = this.container.querySelector('#qa-approve-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  async confirmApprove(item, btn) {
+    const rn = item.rnNo;
+    btn.disabled = true;
+    btn.textContent = 'Approving...';
+
+    try {
+      await this.resolveQAItem(item, 'READY_FOR_INSTALLATION');
+      auditLogService.logEvent({
+        category: AUDIT_CATEGORIES.MANAGER_APPROVAL,
+        eventType: 'AUDIT_APPROVED',
+        description: `Approved Ocular Audit ${rn}. Advanced status to READY_FOR_INSTALLATION.`,
+        severity: AUDIT_SEVERITY.INFO
+      });
+      this.closeApproveOverlay();
+      AppLayout.showToast(`Approved Audit QA for ${rn}`);
+      this.pendingQAItems = this.pendingQAItems.filter(i => i.rnNo !== rn);
+      this.render();
+    } catch (e) {
+      console.warn('[OIMS] Could not approve QA item:', e);
+      AppLayout.showToast('Could not approve — check your connection and try again.');
+      btn.disabled = false;
+      btn.textContent = 'Confirm Approval';
+    }
+  }
+
   // Persists a QA decision to the cloud row. Throws if item.id is missing
   // or the update fails — callers must not treat that as success.
   async resolveQAItem(item, newStatus, qaNotes = null) {
@@ -434,32 +513,27 @@ export class ManagerWorkspace {
       });
     });
 
-    // Approve QA button
+    // Approve QA button — opens the confirmation overlay rather than
+    // approving immediately, so a misclick doesn't advance a record.
     const approveBtns = this.container.querySelectorAll('.btn-qa-approve');
     approveBtns.forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', () => {
         const rn = btn.getAttribute('data-rn');
-        const item = this.pendingQAItems.find(i => i.rnNo === rn);
-        if (!item) return;
-        btn.disabled = true;
-
-        try {
-          await this.resolveQAItem(item, 'READY_FOR_INSTALLATION');
-          auditLogService.logEvent({
-            category: AUDIT_CATEGORIES.MANAGER_APPROVAL,
-            eventType: 'AUDIT_APPROVED',
-            description: `Approved Ocular Audit ${rn}. Advanced status to READY_FOR_INSTALLATION.`,
-            severity: AUDIT_SEVERITY.INFO
-          });
-          AppLayout.showToast(`Approved Audit QA for ${rn}`);
-          this.pendingQAItems = this.pendingQAItems.filter(i => i.rnNo !== rn);
-          this.render();
-        } catch (e) {
-          console.warn('[OIMS] Could not approve QA item:', e);
-          AppLayout.showToast('Could not approve — check your connection and try again.');
-          btn.disabled = false;
-        }
+        this.openApproveOverlay(rn);
       });
+    });
+
+    // Approve overlay dismissal (backdrop click / Escape)
+    const approveOverlay = this.container.querySelector('#qa-approve-overlay');
+    if (approveOverlay) {
+      approveOverlay.addEventListener('click', (e) => {
+        if (e.target === approveOverlay) this.closeApproveOverlay();
+      });
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const overlayEl = this.container.querySelector('#qa-approve-overlay');
+      if (overlayEl && overlayEl.style.display !== 'none') this.closeApproveOverlay();
     });
 
     // Reject QA button
