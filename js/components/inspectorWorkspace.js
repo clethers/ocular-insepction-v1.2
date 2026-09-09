@@ -9,6 +9,7 @@ import { InstallationForm } from '../forms/installationForm.js';
 import { FormStorage } from './formStorage.js';
 import { AuthGuard } from './authGuard.js';
 import { supabaseService } from '../services/supabaseService.js';
+import { SupportTicketsPanel } from './supportTicketsPanel.js';
 
 export class InspectorWorkspace {
   constructor(container) {
@@ -21,6 +22,7 @@ export class InspectorWorkspace {
     if (path.includes('/ready')) return 'ready';
     if (path.includes('/installation')) return 'installation';
     if (path.includes('/history')) return 'history';
+    if (path.includes('/tickets')) return 'tickets';
     return 'ocular';
   }
 
@@ -41,7 +43,8 @@ export class InspectorWorkspace {
       ocular: 'Ocular Inspection Form',
       ready: 'Ready for Installation Queue',
       installation: 'Installation Handover Certificate',
-      history: 'Saved Form Drafts & Repositories'
+      history: 'Saved Form Drafts & Repositories',
+      tickets: 'Support Tickets'
     };
 
     const headerTitle = document.getElementById('view-page-title');
@@ -103,6 +106,11 @@ export class InspectorWorkspace {
       }
       case 'history': {
         this.renderHistoryStage(stage);
+        break;
+      }
+      case 'tickets': {
+        const ticketsView = new SupportTicketsPanel(stage, { canResolve: false });
+        ticketsView.render();
         break;
       }
       case 'ocular':
