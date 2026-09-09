@@ -40,15 +40,24 @@ class SupabaseService {
     ]);
   }
 
-  async fetchReadyInspections() {
+  // teamId, when passed, is the logged-in field inspector's own profile id
+  // (see fetchFieldTeams — "Operations Team 1/2" are real login accounts,
+  // not a label). A record with no assigned_team is visible to everyone;
+  // one assigned to a team only shows up for that team's own account.
+  async fetchReadyInspections(teamId) {
     if (this.isConfigured()) {
       try {
+        let query = this.client
+          .from('ocular_inspections')
+          .select('*')
+          .eq('status', 'READY_FOR_INSTALLATION');
+
+        if (teamId) {
+          query = query.or(`assigned_team.is.null,assigned_team.eq.${teamId}`);
+        }
+
         const { data, error } = await this.withTimeout(
-          this.client
-            .from('ocular_inspections')
-            .select('*')
-            .eq('status', 'READY_FOR_INSTALLATION')
-            .order('created_at', { ascending: false }),
+          query.order('created_at', { ascending: false }),
           3000,
           'Fetch ready inspections'
         );
@@ -61,6 +70,30 @@ class SupabaseService {
     }
 
     return [];
+  }
+
+  // The two "Operations Team" accounts field inspectors log in as —
+  // real profiles, not a separate roster table. Used to populate the
+  // team picker in the Audit QA approve overlay.
+  async fetchFieldTeams() {
+    if (!this.isConfigured()) return [];
+    try {
+      const { data, error } = await this.withTimeout(
+        this.client
+          .from('profiles')
+          .select('id, full_name')
+          .eq('role', 'field_inspector')
+          .ilike('full_name', 'Operations Team%')
+          .order('full_name', { ascending: true }),
+        3000,
+        'Fetch field teams'
+      );
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.warn('[OIMS Supabase] Could not fetch field teams:', err.message);
+      return [];
+    }
   }
 
   // Customer Care QA queue — submissions awaiting first-pass review, before

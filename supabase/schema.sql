@@ -179,7 +179,8 @@ CREATE TABLE IF NOT EXISTS public.ocular_inspections (
     qa_reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     qa_reviewed_at TIMESTAMPTZ,
 
-    -- Inspection team routing (set from the Audit QA Queue)
+    -- Inspection team routing (set from the Audit QA Queue) — holds the
+    -- profiles.id of the "Operations Team 1/2" login accounts
     assigned_team VARCHAR(50)
 );
 

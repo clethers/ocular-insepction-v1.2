@@ -18,6 +18,7 @@ export class ManagerWorkspace {
     this.qaLoading = false;
     this.qaLoaded = false;
     this.qaViewMode = 'card'; // 'card' or 'list'
+    this.fieldTeams = []; // "Operations Team 1/2" accounts — see fetchFieldTeams
   }
 
   async render() {
@@ -65,7 +66,12 @@ export class ManagerWorkspace {
   async loadQAQueue() {
     this.qaLoading = true;
     try {
-      this.pendingQAItems = await supabaseService.fetchPendingQAInspections();
+      const [items, teams] = await Promise.all([
+        supabaseService.fetchPendingQAInspections(),
+        supabaseService.fetchFieldTeams()
+      ]);
+      this.pendingQAItems = items;
+      this.fieldTeams = teams;
     } catch (e) {
       console.warn('[OIMS] Could not fetch pending QA inspections:', e);
       this.pendingQAItems = [];
@@ -385,12 +391,13 @@ export class ManagerWorkspace {
 
       <label class="form-label" style="font-size: 0.8rem;">Assign Inspection Team</label>
       <div class="modal-choice-grid" id="qa-approve-team-grid" style="margin-top: 0.5rem; margin-bottom: 1.25rem;">
-        <button type="button" class="modal-choice-btn ${item.assignedTeam === 'TEAM_1' ? 'selected' : ''}" data-team-choice="TEAM_1">
-          <span class="modal-choice-title">Inspection Team 1</span>
-        </button>
-        <button type="button" class="modal-choice-btn ${item.assignedTeam === 'TEAM_2' ? 'selected' : ''}" data-team-choice="TEAM_2">
-          <span class="modal-choice-title">Inspection Team 2</span>
-        </button>
+        ${this.fieldTeams.length > 0 ? this.fieldTeams.map(team => `
+          <button type="button" class="modal-choice-btn ${item.assignedTeam === team.id ? 'selected' : ''}" data-team-choice="${team.id}">
+            <span class="modal-choice-title">${team.full_name}</span>
+          </button>
+        `).join('') : `
+          <p style="grid-column: 1 / -1; font-size: 0.8rem; color: #94a3b8; margin: 0;">No field teams configured yet.</p>
+        `}
       </div>
 
       <div class="modal-footer">

@@ -5,6 +5,7 @@
 
 import { READY_INSTALLATIONS_PRESETS } from '../sampleData.js';
 import { supabaseService } from '../services/supabaseService.js';
+import { AuthGuard } from './authGuard.js';
 import { escapeHTML } from '../utils/security.js';
 
 export class ReadyList {
@@ -25,7 +26,8 @@ export class ReadyList {
     let cloudReadyItems = [];
 
     try {
-      cloudReadyItems = (await supabaseService.fetchReadyInspections()) || [];
+      const user = await AuthGuard.getSessionUser();
+      cloudReadyItems = (await supabaseService.fetchReadyInspections(user?.id)) || [];
     } catch (e) {
       console.warn('[OIMS] Could not fetch cloud inspections:', e);
     }
