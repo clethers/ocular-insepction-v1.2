@@ -56,7 +56,7 @@ export class Router {
 
       if (cleanPath === '/login') {
         if (user) {
-          const defaultPath = this.getDefaultPathForRole(user.role);
+          const defaultPath = this.getDefaultPathForRole(user);
           window.history.replaceState({}, '', defaultPath);
           await this.handleRoute(defaultPath);
         } else {
@@ -77,7 +77,7 @@ export class Router {
       }
       if (cleanPath === '/set-password') {
         // Flag already cleared (e.g. back button after completing it) — move on.
-        const defaultPath = this.getDefaultPathForRole(user.role);
+        const defaultPath = this.getDefaultPathForRole(user);
         window.history.replaceState({}, '', defaultPath);
         return this.handleRoute(defaultPath);
       }
@@ -130,7 +130,12 @@ export class Router {
     }
   }
 
-  static getDefaultPathForRole(role) {
+  // Accepts the full session user (not just role) so the "Operations Team"
+  // shared accounts — real field_inspector logins used purely to work the
+  // Ready for Install queue, see fetchFieldTeams — can land somewhere more
+  // useful than the ocular inspection form they never actually fill out.
+  static getDefaultPathForRole(user) {
+    const role = user?.role;
     switch (role) {
       case USER_ROLES.ADMIN:
         return '/admin/dashboard';
@@ -138,6 +143,7 @@ export class Router {
       case USER_ROLES.LEAD_ENGINEER:
         return '/manager/qa';
       case USER_ROLES.FIELD_INSPECTOR:
+        return (user?.fullName || '').startsWith('Operations Team') ? '/ocular/ready' : '/ocular';
       default:
         return '/ocular';
     }

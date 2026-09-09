@@ -137,7 +137,18 @@ export class AuthGuard {
       case USER_ROLES.CUSTOMER_CARE_MANAGER:
       case USER_ROLES.LEAD_ENGINEER:
         return isHtmlPath ? './manager.html' : '/manager/qa';
-      case USER_ROLES.FIELD_INSPECTOR:
+      case USER_ROLES.FIELD_INSPECTOR: {
+        // "Operations Team 1/2" are shared field_inspector logins used
+        // purely to work the Ready for Install queue (see fetchFieldTeams)
+        // — land them there instead of the ocular inspection form. Only
+        // wired for the SPA path: ocular.html's own entry script
+        // (js/pages/ocularPage.js) doesn't read a tab from the query
+        // string or hash the way admin.html does, so there's no working
+        // sub-tab target on the legacy static-page fallback.
+        const isTeamAccount = (user.fullName || '').startsWith('Operations Team');
+        if (isTeamAccount && !isHtmlPath) return '/ocular/ready';
+        return isHtmlPath ? './ocular.html' : '/ocular';
+      }
       default:
         return isHtmlPath ? './ocular.html' : '/ocular';
     }

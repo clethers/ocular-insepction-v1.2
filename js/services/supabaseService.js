@@ -42,8 +42,9 @@ class SupabaseService {
 
   // teamId, when passed, is the logged-in field inspector's own profile id
   // (see fetchFieldTeams — "Operations Team 1/2" are real login accounts,
-  // not a label). A record with no assigned_team is visible to everyone;
-  // one assigned to a team only shows up for that team's own account.
+  // not a label). Strictly assignment-only: a record only shows up for the
+  // exact team it was assigned to in the Audit QA Queue — an unassigned
+  // record is invisible here until Customer Care routes it to someone.
   async fetchReadyInspections(teamId) {
     if (this.isConfigured()) {
       try {
@@ -53,7 +54,7 @@ class SupabaseService {
           .eq('status', 'READY_FOR_INSTALLATION');
 
         if (teamId) {
-          query = query.or(`assigned_team.is.null,assigned_team.eq.${teamId}`);
+          query = query.eq('assigned_team', teamId);
         }
 
         const { data, error } = await this.withTimeout(
