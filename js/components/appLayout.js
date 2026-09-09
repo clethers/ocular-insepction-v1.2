@@ -90,7 +90,7 @@ export class AppLayout {
                 <span>Audit QA Queue</span>
               </a>
 
-              <a class="sidebar-nav-btn disabled" title="360 Client Lookup (Coming Soon)" aria-disabled="true">
+              <a href="/manager/clientsearch" class="sidebar-nav-btn ${isActive('/manager/clientsearch') ? 'active' : ''}" title="360 Client Lookup">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <span>360° Client Lookup</span>
               </a>

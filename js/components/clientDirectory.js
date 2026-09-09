@@ -51,6 +51,16 @@ export class ClientDirectory {
           <div style="text-align: center; padding: 2rem; color: #64748b;">Loading client records...</div>
         </div>
       </div>
+
+      <!-- Client Detail Overlay: pipeline stepper + key details, non-blocking -->
+      <div class="modal-overlay no-print" id="client-detail-overlay" style="display: none;">
+        <div class="modal-dialog" style="max-width: 640px;">
+          <div id="client-detail-content"></div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline" id="btn-close-client-detail">Close</button>
+          </div>
+        </div>
+      </div>
     `;
   }
 
@@ -70,6 +80,109 @@ export class ClientDirectory {
         this.renderList();
       });
     }
+
+    const closeBtn = this.container.querySelector('#btn-close-client-detail');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => this.closeClientDetail());
+    }
+
+    const overlay = this.container.querySelector('#client-detail-overlay');
+    if (overlay) {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) this.closeClientDetail();
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const overlayEl = this.container.querySelector('#client-detail-overlay');
+      if (overlayEl && overlayEl.style.display !== 'none') this.closeClientDetail();
+    });
+  }
+
+  closeClientDetail() {
+    const overlay = this.container.querySelector('#client-detail-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  async openClientDetail(record) {
+    const overlay = this.container.querySelector('#client-detail-overlay');
+    const content = this.container.querySelector('#client-detail-content');
+    if (!overlay || !content) return;
+
+    content.innerHTML = `<div style="text-align: center; padding: 2rem; color: #64748b;">Loading installation status...</div>`;
+    overlay.style.display = 'flex';
+
+    const installation = await supabaseService.fetchInstallationByRnNo(record.rnNo);
+    content.innerHTML = this.renderClientDetail(record, installation);
+  }
+
+  // Maps OIMS's real pipeline (ocular_inspections.status +, once it
+  // exists, a matching installation_records row) onto a 4-stage tracker.
+  // RE_INSPECTION_REQUESTED is a loop back to QA, not a forward stage, so
+  // it's shown as a flag on the QA step rather than breaking the sequence.
+  renderClientDetail(record, installation) {
+    const isReInspection = record.status === 'RE_INSPECTION_REQUESTED';
+    const qaCleared = record.status !== 'PENDING_QA' && !isReInspection;
+    const approved = record.status === 'READY_FOR_INSTALLATION' || !!installation;
+    const installComplete = !!installation;
+
+    const stages = [
+      { label: 'Ocular Inspection Submitted', complete: true },
+      { label: 'QA Review', complete: qaCleared },
+      { label: 'Approved for Installation', complete: approved },
+      { label: 'Installation Complete', complete: installComplete }
+    ];
+
+    const checkIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    const stepperHtml = stages.map((stage, i) => `
+      ${i > 0 ? `<div class="pipeline-connector ${stages[i - 1].complete ? 'active' : ''}"></div>` : ''}
+      <div class="pipeline-step ${stage.complete ? 'completed' : ''}">
+        <div class="pipeline-step-icon">${stage.complete ? checkIcon : i + 1}</div>
+        <div class="pipeline-step-label">${escapeHTML(stage.label)}</div>
+      </div>
+    `).join('');
+
+    const reInspectionFlag = isReInspection
+      ? `<div style="margin-top: 0.75rem; padding: 0.6rem 0.85rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius-md); color: #b91c1c; font-size: 0.8rem; font-weight: 600;">
+           Sent back for re-inspection${record.qaNotes ? `: "${escapeHTML(record.qaNotes)}"` : ''}
+         </div>`
+      : '';
+
+    const detailRows = [
+      ['Client Name', record.clientName || 'N/A'],
+      ['RN Number', record.rnNo || 'N/A'],
+      ['Location Address', record.locationAddress || 'N/A'],
+      ['Voltage System', record.voltageSystem === '220_ll' ? '220 VAC, 1 Ø, L-L' : record.voltageSystem === '220_lg' ? '220 VAC, 1 Ø, L-G' : (record.voltageSpecify || 'N/A')],
+      ['Main Breaker', record.mainBreaker === 'OTHER' ? (record.mainBreakerOther || 'N/A') : (record.mainBreaker || 'N/A')],
+      ['Inspected By', record.inspectedByName || 'N/A'],
+      ['Date Submitted', record.dateTimeDisplay || 'N/A']
+    ];
+
+    if (installation) {
+      detailRows.push(
+        ['Installer', installation.installer_name || 'N/A'],
+        ['Date Installed', installation.created_at ? new Date(installation.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A']
+      );
+    }
+
+    return `
+      <h3 class="modal-title">${escapeHTML(record.clientName || 'Unnamed Client')}</h3>
+      <p class="modal-subtitle">RN ${escapeHTML(record.rnNo || 'N/A')} &middot; ${escapeHTML(record.locationAddress || 'No address on file')}</p>
+
+      <div class="pipeline-stepper">${stepperHtml}</div>
+      ${reInspectionFlag}
+
+      <table class="cert-table" style="margin-top: 1.5rem; width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+        ${detailRows.map(([label, value]) => `
+          <tr>
+            <td style="padding: 0.5rem 0.75rem; border: 1px solid var(--border-subtle); font-weight: 700; color: var(--text-muted); width: 40%;">${escapeHTML(label)}</td>
+            <td style="padding: 0.5rem 0.75rem; border: 1px solid var(--border-subtle); color: var(--text-primary);">${escapeHTML(String(value))}</td>
+          </tr>
+        `).join('')}
+      </table>
+    `;
   }
 
   getFilteredRecords() {
@@ -131,6 +244,9 @@ export class ClientDirectory {
               </div>
             </div>
             <div style="display: flex; gap: 0.5rem;">
+              <button type="button" class="btn btn-outline btn-view-client" data-rn="${escapeHTML(r.rnNo || '')}" style="padding: 0.5rem 0.9rem; font-size: 0.8rem;">
+                View Details
+              </button>
               <button type="button" class="btn btn-primary btn-print-client" data-rn="${escapeHTML(r.rnNo || '')}" style="padding: 0.5rem 0.9rem; font-size: 0.8rem;">
                 Print
               </button>
@@ -150,6 +266,14 @@ export class ClientDirectory {
         const rn = btn.getAttribute('data-rn');
         const record = this.records.find(r => r.rnNo === rn);
         if (record) printOcularCertificate(record);
+      });
+    });
+
+    listEl.querySelectorAll('.btn-view-client').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const rn = btn.getAttribute('data-rn');
+        const record = this.records.find(r => r.rnNo === rn);
+        if (record) this.openClientDetail(record);
       });
     });
 

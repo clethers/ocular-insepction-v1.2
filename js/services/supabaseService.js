@@ -155,6 +155,33 @@ class SupabaseService {
     return { records: [], source: 'cloud' };
   }
 
+  // Looks up the installation_records row for a given rn_no, if the
+  // installation has been completed yet. ocular_inspections.rn_no and
+  // installation_records.rn_no are both populated from the same source
+  // (ocular_id is defined in the schema but never actually set on save),
+  // so rn_no is the reliable join key between the two tables today.
+  async fetchInstallationByRnNo(rnNo) {
+    if (!rnNo || !this.isConfigured()) return null;
+    try {
+      const { data, error } = await this.withTimeout(
+        this.client
+          .from('installation_records')
+          .select('*')
+          .eq('rn_no', rnNo)
+          .order('created_at', { ascending: false })
+          .limit(1),
+        3000,
+        'Fetch installation by rn_no'
+      );
+
+      if (error) throw error;
+      return (data && data[0]) || null;
+    } catch (err) {
+      console.warn('[OIMS Supabase] Could not fetch installation record:', err.message);
+      return null;
+    }
+  }
+
   async archiveInspection(id) {
     if (!this.isConfigured()) throw new Error('Cloud not configured');
     const { error } = await this.withTimeout(

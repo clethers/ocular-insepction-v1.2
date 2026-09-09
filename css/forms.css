@@ -1515,4 +1515,64 @@
   }
 }
 
+/* Client Detail Pipeline Stepper */
+.pipeline-stepper {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 1.25rem;
+}
+
+.pipeline-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 72px;
+  opacity: 0.55;
+}
+
+.pipeline-step.completed {
+  opacity: 1;
+}
+
+.pipeline-step-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--bg-input);
+  border: 2px solid var(--text-muted);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pipeline-step.completed .pipeline-step-icon {
+  background: var(--ecoworks-blue);
+  border-color: var(--ecoworks-blue);
+  color: #ffffff;
+}
+
+.pipeline-step-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.25;
+}
+
+.pipeline-connector {
+  flex: 1;
+  height: 2px;
+  background: var(--border-subtle);
+  margin-top: 15px;
+}
+
+.pipeline-connector.active {
+  background: var(--ecoworks-blue);
+}
+
 
