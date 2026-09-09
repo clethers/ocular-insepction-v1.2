@@ -12,6 +12,11 @@
     print-color-adjust: exact !important;
   }
 
+  html, body {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
   body {
     background: #ffffff !important;
     color: #0f172a !important;
@@ -20,6 +25,7 @@
     line-height: 1.35 !important;
     margin: 0 !important;
     padding: 0 !important;
+    display: block !important;
   }
 
   /* Hide ALL Non-Print UI Components, Web Forms, Buttons, and App Cards */
@@ -58,8 +64,8 @@
   }
 
   /* Ensure Workspace Wrapper & Stage Containers Remain Visible for Print Document Rendering */
-  .app-layout, 
-  .app-main-content, 
+  .app-layout,
+  .app-main-content,
   .view-stage,
   .inspector-workspace-wrapper,
   #inspector-tab-stage,
@@ -68,6 +74,9 @@
     padding: 0 !important;
     margin: 0 !important;
     width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
     background: #ffffff !important;
     box-shadow: none !important;
     border: none !important;
@@ -223,6 +232,14 @@
     border: 1px solid #cbd5e1;
     padding: 4px 7px;
     vertical-align: middle;
+  }
+
+  .cert-table thead {
+    display: table-header-row-group;
+  }
+
+  .cert-table tr {
+    page-break-inside: avoid;
   }
 
   .cert-table th {

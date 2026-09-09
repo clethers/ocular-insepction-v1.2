@@ -7,6 +7,7 @@
 
 import { supabaseService } from '../services/supabaseService.js';
 import { escapeHTML } from '../utils/security.js';
+import { printInstallationsList } from '../utils/installationsCertificate.js';
 
 export class InstallationsDirectory {
   constructor(container) {
@@ -33,6 +34,7 @@ export class InstallationsDirectory {
 
         <div style="display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
           <input type="text" id="input-installations-search" class="form-input" placeholder="Search client name, RN, installer..." style="flex: 1; min-width: 220px;" />
+          <button type="button" class="btn btn-primary no-print" id="btn-print-installations" style="padding: 0.6rem 1rem; font-size: 0.825rem;">Print List</button>
         </div>
 
         <div id="installations-list">
@@ -49,6 +51,11 @@ export class InstallationsDirectory {
         this.searchQuery = e.target.value.trim().toLowerCase();
         this.renderList();
       });
+    }
+
+    const printBtn = this.container.querySelector('#btn-print-installations');
+    if (printBtn) {
+      printBtn.addEventListener('click', () => printInstallationsList(this.getFilteredRecords()));
     }
   }
 
