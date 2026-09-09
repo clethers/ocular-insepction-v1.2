@@ -20,6 +20,8 @@ export class ClientDirectory {
     this.dataSource = 'cloud';
     this.searchQuery = '';
     this.statusFilter = 'ALL';
+    this.sortKey = 'dateTimeDisplay';
+    this.sortDir = 'desc';
   }
 
   async render() {
@@ -185,12 +187,31 @@ export class ClientDirectory {
     `;
   }
 
+  getStatusMeta(status) {
+    switch (status) {
+      case 'READY_FOR_INSTALLATION': return { label: 'Approved', color: '#16a34a' };
+      case 'RE_INSPECTION_REQUESTED': return { label: 'Re-Inspection', color: '#dc2626' };
+      case 'PENDING_QA': return { label: 'Pending QA', color: '#d97706' };
+      default: return { label: status || 'Unknown', color: '#64748b' };
+    }
+  }
+
   getFilteredRecords() {
-    return this.records.filter(r => {
+    const filtered = this.records.filter(r => {
       if (this.statusFilter !== 'ALL' && r.status !== this.statusFilter) return false;
       if (!this.searchQuery) return true;
       const haystack = `${r.clientName || ''} ${r.rnNo || ''} ${r.contactNo || ''}`.toLowerCase();
       return haystack.includes(this.searchQuery);
+    });
+
+    const key = this.sortKey;
+    const dir = this.sortDir === 'asc' ? 1 : -1;
+    return filtered.sort((a, b) => {
+      const av = (a[key] || '').toString().toLowerCase();
+      const bv = (b[key] || '').toString().toLowerCase();
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
     });
   }
 
@@ -229,37 +250,69 @@ export class ClientDirectory {
       return;
     }
 
+    const columns = [
+      { key: 'rnNo', label: 'RN Number' },
+      { key: 'clientName', label: 'Client Name' },
+      { key: 'locationAddress', label: 'Location' },
+      { key: 'status', label: 'Status' },
+      { key: 'dateTimeDisplay', label: 'Date Submitted' }
+    ];
+
+    const sortArrow = (key) => {
+      if (this.sortKey !== key) return '';
+      return this.sortDir === 'asc'
+        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="margin-left: 0.25rem; vertical-align: -1px;"><path d="M12 5l7 8H5z"/></svg>`
+        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="margin-left: 0.25rem; vertical-align: -1px;"><path d="M12 19l-7-8h14z"/></svg>`;
+    };
+
     listEl.innerHTML = `
-      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-        ${filtered.map(r => `
-          <div style="padding: 1.25rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-lg); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);">
-            <div>
-              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                <strong style="color: #0f172a; font-size: 1rem;">${escapeHTML(r.clientName || 'Unnamed Client')}</strong>
-                <span class="badge" style="background: rgba(0, 174, 239, 0.15); color: var(--ecoworks-blue); font-size: 0.725rem; font-weight: 700; padding: 0.2rem 0.5rem;">${escapeHTML(r.rnNo || 'N/A')}</span>
-                <span class="badge" style="background: rgba(100, 116, 139, 0.15); color: #475569; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem;">${escapeHTML(r.status || 'UNKNOWN')}</span>
-              </div>
-              <div style="font-size: 0.8rem; color: #64748b;">
-                ${escapeHTML(r.locationAddress || 'No address on file')} | ${escapeHTML(r.dateTimeDisplay || 'Recent')}
-              </div>
-            </div>
-            <div style="display: flex; gap: 0.5rem;">
-              <button type="button" class="btn btn-outline btn-view-client" data-rn="${escapeHTML(r.rnNo || '')}" style="padding: 0.5rem 0.9rem; font-size: 0.8rem;">
-                View Details
-              </button>
-              <button type="button" class="btn btn-primary btn-print-client" data-rn="${escapeHTML(r.rnNo || '')}" style="padding: 0.5rem 0.9rem; font-size: 0.8rem;">
-                Print
-              </button>
-              ${this.canDelete && this.dataSource === 'cloud' ? `
-                <button type="button" class="btn btn-secondary btn-delete-client" data-rn="${escapeHTML(r.rnNo || '')}" style="padding: 0.5rem 0.9rem; font-size: 0.8rem; color: #F43F5E; border-color: #F43F5E;">
-                  Delete
-                </button>
-              ` : ''}
-            </div>
-          </div>
-        `).join('')}
+      <div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: var(--radius-lg);">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              ${columns.map(col => `
+                <th class="directory-table-sortable" data-sort-key="${col.key}">${escapeHTML(col.label)}${sortArrow(col.key)}</th>
+              `).join('')}
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered.map(r => {
+              const statusMeta = this.getStatusMeta(r.status);
+              return `
+                <tr>
+                  <td><span style="font-weight: 700; color: var(--ecoworks-blue);">${escapeHTML(r.rnNo || 'N/A')}</span></td>
+                  <td style="font-weight: 600; color: #0f172a;">${escapeHTML(r.clientName || 'Unnamed Client')}</td>
+                  <td style="color: #64748b;">${escapeHTML(r.locationAddress || 'No address on file')}</td>
+                  <td style="color: ${statusMeta.color}; font-weight: 600;">${escapeHTML(statusMeta.label)}</td>
+                  <td style="color: #64748b;">${escapeHTML(r.dateTimeDisplay || 'Recent')}</td>
+                  <td style="text-align: right; white-space: nowrap;">
+                    <button type="button" class="btn-link btn-view-client" data-rn="${escapeHTML(r.rnNo || '')}">View Details</button>
+                    <button type="button" class="btn-link btn-print-client" data-rn="${escapeHTML(r.rnNo || '')}">Print</button>
+                    ${this.canDelete && this.dataSource === 'cloud' ? `
+                      <button type="button" class="btn-link btn-delete-client" data-rn="${escapeHTML(r.rnNo || '')}" style="color: #F43F5E;">Delete</button>
+                    ` : ''}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
       </div>
     `;
+
+    listEl.querySelectorAll('.directory-table-sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.getAttribute('data-sort-key');
+        if (this.sortKey === key) {
+          this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          this.sortKey = key;
+          this.sortDir = 'asc';
+        }
+        this.renderList();
+      });
+    });
 
     listEl.querySelectorAll('.btn-print-client').forEach(btn => {
       btn.addEventListener('click', () => {

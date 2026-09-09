@@ -1575,4 +1575,67 @@
   background: var(--ecoworks-blue);
 }
 
+/* Client Directory data table */
+.directory-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.825rem;
+  background: #ffffff;
+}
+
+.directory-table th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+  color: #475569;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  white-space: nowrap;
+}
+
+.directory-table-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.directory-table-sortable:hover {
+  color: #0f172a;
+}
+
+.directory-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.directory-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.directory-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ecoworks-blue);
+  cursor: pointer;
+}
+
+.btn-link:first-child {
+  margin-left: 0;
+}
+
+.btn-link:hover {
+  text-decoration: underline;
+}
+
 
