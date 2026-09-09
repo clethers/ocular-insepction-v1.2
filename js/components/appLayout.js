@@ -205,6 +205,9 @@ export class AppLayout {
         <div class="toast-container"></div>
       </div>
 
+      <!-- Mobile / Tablet Off-Canvas Sidebar Backdrop -->
+      <div class="sidebar-backdrop no-print" id="sidebar-backdrop"></div>
+
       <!-- User Profile Modal -->
       <div id="login-modal" style="display: none; position: fixed; inset: 0; z-index: 999; background: rgba(0,0,0,0.5); backdrop-filter: blur(8px); align-items: center; justify-content: center;">
         <div class="form-card" style="max-width: 400px; width: 90%; background: var(--bg-card); border-color: var(--ecoworks-blue);">
@@ -242,13 +245,49 @@ export class AppLayout {
   static bindLayoutEvents() {
     const toggleBtn = document.getElementById('btn-sidebar-toggle');
     const sidebar = document.getElementById('app-sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const isMobileViewport = () => window.matchMedia('(max-width: 900px)').matches;
+
+    const closeMobileSidebar = () => {
+      if (sidebar) sidebar.classList.remove('mobile-open');
+      if (backdrop) backdrop.classList.remove('visible');
+    };
+
+    // The desktop icon-fold state is meaningless on a phone/tablet drawer —
+    // strip it on bind so a fold saved on a wide screen doesn't carry over.
+    if (sidebar && isMobileViewport()) {
+      sidebar.classList.remove('collapsed');
+    }
+
+    window.addEventListener('resize', () => {
+      if (!isMobileViewport()) closeMobileSidebar();
+    });
+
     if (toggleBtn && sidebar) {
       toggleBtn.addEventListener('click', () => {
-        sidebar.classList.toggle('collapsed');
-        const collapsed = sidebar.classList.contains('collapsed');
-        localStorage.setItem('oims_sidebar_collapsed', collapsed ? 'true' : 'false');
+        if (isMobileViewport()) {
+          // On phones/tablets the sidebar is an off-canvas drawer — toggle
+          // it open/closed instead of folding it to an icon rail.
+          sidebar.classList.toggle('mobile-open');
+          if (backdrop) backdrop.classList.toggle('visible', sidebar.classList.contains('mobile-open'));
+        } else {
+          sidebar.classList.toggle('collapsed');
+          const collapsed = sidebar.classList.contains('collapsed');
+          localStorage.setItem('oims_sidebar_collapsed', collapsed ? 'true' : 'false');
+        }
       });
     }
+
+    if (backdrop) {
+      backdrop.addEventListener('click', closeMobileSidebar);
+    }
+
+    // Closing the drawer after tapping a nav link happens for free: Router
+    // re-renders AppLayout.init() on every navigation, which rebuilds the
+    // sidebar in its default (closed) state.
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeMobileSidebar();
+    });
 
     const trigger = document.getElementById('btn-user-menu-trigger');
     const menu = document.getElementById('user-dropdown-menu');

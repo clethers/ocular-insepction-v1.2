@@ -20,6 +20,7 @@
   color: var(--text-primary);
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.6rem;
   margin-bottom: 1.25rem;
   padding-bottom: 0.75rem;
@@ -231,6 +232,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   padding: 0.5rem 0.85rem;
   background: var(--bg-input);
   border: 1px solid var(--border-subtle);
@@ -251,7 +253,12 @@
   font-size: 0.825rem;
   font-weight: 700;
   color: var(--text-primary);
-  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.stepper-card .qty-adjuster {
+  flex-shrink: 0;
 }
 
 /* Quantity Adjuster Counter / Stepper */
@@ -454,6 +461,67 @@
   box-shadow: var(--shadow-lg);
 }
 
+@media (max-width: 700px) {
+  /* Step labels ("EV Charger & Materials") don't fit a phone-width bar —
+     show only the numbered circles, with the active step's label surfaced
+     underneath it instead of inline. */
+  .wizard-progress-bar {
+    padding: 0.85rem 1rem;
+  }
+
+  .wizard-step-label {
+    display: none;
+  }
+
+  .wizard-step.active {
+    position: relative;
+  }
+
+  .wizard-step.active .wizard-step-label {
+    display: block;
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 0.35rem;
+    font-size: 0.68rem;
+    white-space: nowrap;
+    color: var(--ecoworks-blue);
+  }
+
+  .wizard-line {
+    margin: 0 0.25rem;
+  }
+
+  /* Three buttons ("Previous Step" / "Save Draft" / "Submit for QA Review")
+     no longer fit one row — wrap to a Prev row + an even Save/Next row. */
+  .wizard-footer {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding: 0.75rem;
+    bottom: 0.5rem;
+  }
+
+  .wizard-footer > button#btn-prev {
+    flex: 1 1 100%;
+    order: 2;
+  }
+
+  .wizard-footer > div {
+    flex: 1 1 100%;
+    width: 100%;
+    order: 1;
+  }
+
+  .wizard-footer > div > button {
+    flex: 1;
+    white-space: normal;
+    text-align: center;
+    font-size: 0.775rem;
+    padding: 0.6rem 0.4rem;
+  }
+}
+
 /* Preset Badge / Demo Bar */
 .demo-preset-bar {
   background: linear-gradient(90deg, rgba(11, 123, 192, 0.15), rgba(245, 168, 61, 0.15));
@@ -529,8 +597,14 @@
 
 .ready-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.25rem;
+}
+
+@media (max-width: 420px) {
+  .ready-cards-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ready-card {
@@ -1191,8 +1265,14 @@
 /* Ready Queue Card Executive Redesign (UI/UX Skill Aligned) */
 .ready-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.25rem;
+}
+
+@media (max-width: 420px) {
+  .ready-cards-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ready-card {
