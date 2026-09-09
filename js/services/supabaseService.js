@@ -182,6 +182,37 @@ class SupabaseService {
     }
   }
 
+  async fetchAllInstallations() {
+    if (this.isConfigured()) {
+      try {
+        const { data, error } = await this.withTimeout(
+          this.client
+            .from('installation_records')
+            .select('*')
+            .order('created_at', { ascending: false }),
+          3000,
+          'Fetch all installations'
+        );
+
+        if (error) throw error;
+        return (data || []).map(item => ({
+          id: item.id,
+          rnNo: item.rn_no,
+          installationNo: item.installation_no,
+          clientName: item.client_name,
+          scopeOfWorks: item.scope_of_works,
+          installerName: item.installer_name,
+          status: item.status,
+          createdAt: item.created_at
+        }));
+      } catch (err) {
+        console.warn('[OIMS Supabase] Could not fetch all installations:', err.message);
+      }
+    }
+
+    return [];
+  }
+
   async archiveInspection(id) {
     if (!this.isConfigured()) throw new Error('Cloud not configured');
     const { error } = await this.withTimeout(

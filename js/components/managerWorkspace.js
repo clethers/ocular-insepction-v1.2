@@ -8,11 +8,12 @@ import { AuthGuard } from './authGuard.js';
 import { auditLogService, AUDIT_CATEGORIES, AUDIT_SEVERITY } from '../services/auditLogService.js';
 import { AppLayout } from './appLayout.js';
 import { ClientDirectory } from './clientDirectory.js';
+import { InstallationsDirectory } from './installationsDirectory.js';
 
 export class ManagerWorkspace {
   constructor(container) {
     this.container = container;
-    this.activeTab = 'qa'; // 'dispatch', 'qa', 'clientsearch', 'calendar', 'tickets', 'materials', 'sms', 'kpis' — qa is the only tab wired to real data, so it's the default landing tab
+    this.activeTab = 'qa'; // 'dispatch', 'qa', 'clientsearch', 'installations', 'calendar', 'tickets', 'materials', 'sms', 'kpis' — qa is the only tab wired to real data, so it's the default landing tab
     this.pendingQAItems = [];
     this.qaLoading = false;
     this.qaLoaded = false;
@@ -24,7 +25,7 @@ export class ManagerWorkspace {
 
         <!-- Stage Container -->
         <div id="manager-tab-stage">
-          ${this.activeTab === 'clientsearch' ? '' : this.renderTabStage()}
+          ${(this.activeTab === 'clientsearch' || this.activeTab === 'installations') ? '' : this.renderTabStage()}
         </div>
 
       </div>
@@ -33,6 +34,11 @@ export class ManagerWorkspace {
     if (this.activeTab === 'clientsearch') {
       const stage = this.container.querySelector('#manager-tab-stage');
       new ClientDirectory(stage).render();
+    }
+
+    if (this.activeTab === 'installations') {
+      const stage = this.container.querySelector('#manager-tab-stage');
+      new InstallationsDirectory(stage).render();
     }
 
     this.bindEvents();

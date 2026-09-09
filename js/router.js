@@ -210,6 +210,7 @@ export class Router {
       dispatch: 'Workload & Field Dispatch Command Center',
       qa: 'Audit QA Review Queue',
       clientsearch: '360° Client & Account Lookup',
+      installations: 'Installations',
       calendar: 'Field Operations Calendar',
       tickets: 'Support Tickets Hub',
       materials: 'Material Demand & Allocation',
