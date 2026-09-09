@@ -12,6 +12,7 @@ export class ReadyList {
   constructor(containerElement, onSelectInstallation) {
     this.container = containerElement;
     this.onSelectInstallation = onSelectInstallation;
+    this.viewMode = 'card'; // 'card' or 'list'
   }
 
   async render() {
@@ -60,7 +61,9 @@ export class ReadyList {
               </div>
             </div>
 
-            <div class="search-form-meta">
+            <div class="search-form-meta" style="display: flex; align-items: center; gap: 0.5rem;">
+              <button type="button" class="btn ${this.viewMode === 'card' ? 'btn-primary' : 'btn-outline'} btn-ready-view" data-view="card" style="padding: 0.5rem 0.85rem; font-size: 0.775rem;">Card View</button>
+              <button type="button" class="btn ${this.viewMode === 'list' ? 'btn-primary' : 'btn-outline'} btn-ready-view" data-view="list" style="padding: 0.5rem 0.85rem; font-size: 0.775rem;">List View</button>
               <button class="btn btn-outline" id="btn-refresh-ready" style="background: #ffffff; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
                 Refresh List
@@ -85,14 +88,65 @@ export class ReadyList {
           </div>
         </div>
 
-        <!-- Ready Cards Grid -->
-        <div class="ready-cards-grid" id="ready-cards-container">
-          ${this.renderCards(uniqueItems)}
+        <!-- Ready Items: Card Grid or List Table depending on viewMode -->
+        <div class="${this.viewMode === 'list' ? '' : 'ready-cards-grid'}" id="ready-cards-container">
+          ${this.renderItems(uniqueItems)}
         </div>
       </div>
     `;
 
     this.initEvents(uniqueItems);
+  }
+
+  renderItems(items) {
+    return this.viewMode === 'list' ? this.renderListView(items) : this.renderCards(items);
+  }
+
+  renderListView(items) {
+    if (items.length === 0) {
+      return `
+        <div class="form-card" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 0.75rem; color: var(--ecoworks-blue);"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+          <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">No Pending Inspections Ready for Installation</h3>
+          <p style="font-size: 0.85rem; margin-top: 0.3rem;">Complete an Ocular Inspection form and mark it as 'Ready for Installation' to populate this queue.</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="form-card" style="padding: 0; overflow: hidden;">
+        <div style="overflow-x: auto;">
+          <table class="directory-table">
+            <thead>
+              <tr>
+                <th>RN Number</th>
+                <th>Client Name</th>
+                <th>Location</th>
+                <th>Feeder / Breaker</th>
+                <th>Lead Auditor</th>
+                <th>Audit Date</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map(item => `
+                <tr>
+                  <td><span style="font-weight: 700; color: var(--ecoworks-blue);">${escapeHTML(item.rnNo || 'N/A')}</span></td>
+                  <td style="font-weight: 600; color: #0f172a;">${escapeHTML(item.clientName || 'Unnamed Client')}</td>
+                  <td style="color: #64748b;">${escapeHTML(item.locationAddress || 'No address on file')}</td>
+                  <td style="color: #64748b;">${escapeHTML(item.voltageSystem === '220_ll' ? '220V 1Ø L-L' : (item.voltageSystem === '220_lg' ? '220V 1Ø L-G' : '220V Standard'))} / ${escapeHTML(item.mainBreaker || '60A')}</td>
+                  <td style="color: #64748b;">${escapeHTML(item.inspectedByName || 'Field Inspector')}</td>
+                  <td style="color: #64748b;">${escapeHTML(item.dateTimeDisplay || (item.dateTime ? new Date(item.dateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent'))}</td>
+                  <td style="text-align: right; white-space: nowrap;">
+                    <button type="button" class="btn-link btn-start-install" data-rn="${item.rnNo || item.id}">Start Installation Form</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
   }
 
   renderCards(items) {
@@ -199,7 +253,8 @@ export class ReadyList {
 
       const container = document.getElementById('ready-cards-container');
       if (container) {
-        container.innerHTML = this.renderCards(filtered);
+        container.className = this.viewMode === 'list' ? '' : 'ready-cards-grid';
+        container.innerHTML = this.renderItems(filtered);
         this.bindCardButtons(filtered);
       }
     };
@@ -213,6 +268,17 @@ export class ReadyList {
     if (scopeFilter) {
       scopeFilter.addEventListener('change', filterItems);
     }
+
+    // Card / List view toggle
+    const viewBtns = document.querySelectorAll('.btn-ready-view');
+    viewBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.viewMode = btn.getAttribute('data-view');
+        viewBtns.forEach(b => b.classList.toggle('btn-primary', b === btn));
+        viewBtns.forEach(b => b.classList.toggle('btn-outline', b !== btn));
+        filterItems();
+      });
+    });
 
     // Live Realtime Subscription
     supabaseService.subscribeToReadyQueue(() => {
