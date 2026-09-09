@@ -177,7 +177,10 @@ CREATE TABLE IF NOT EXISTS public.ocular_inspections (
     created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     qa_notes TEXT,
     qa_reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-    qa_reviewed_at TIMESTAMPTZ
+    qa_reviewed_at TIMESTAMPTZ,
+
+    -- Inspection team routing (set from the Audit QA Queue)
+    assigned_team VARCHAR(50)
 );
 
 -- Indexing for fast search queries

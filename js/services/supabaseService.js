@@ -132,6 +132,19 @@ class SupabaseService {
     if (error) throw error;
   }
 
+  // Assigns a pending QA item to an inspection team, independent of the
+  // approve/reject decision — Customer Care picks this from the QA queue
+  // before a re-inspection or field follow-up is dispatched.
+  async assignInspectionTeam(id, team) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    const { error } = await this.withTimeout(
+      this.client.from('ocular_inspections').update({ assigned_team: team }).eq('id', id),
+      3000,
+      'Assign inspection team'
+    );
+    if (error) throw error;
+  }
+
   async fetchAllInspections() {
     if (this.isConfigured()) {
       try {
@@ -407,7 +420,8 @@ class SupabaseService {
     ['createdBy', 'created_by'],
     ['qaNotes', 'qa_notes'],
     ['qaReviewedBy', 'qa_reviewed_by'],
-    ['qaReviewedAt', 'qa_reviewed_at']
+    ['qaReviewedAt', 'qa_reviewed_at'],
+    ['assignedTeam', 'assigned_team']
   ];
 
   // Columns in supabase/schema.sql's ocular_inspections table that are typed

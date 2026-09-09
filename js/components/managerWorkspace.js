@@ -17,6 +17,7 @@ export class ManagerWorkspace {
     this.pendingQAItems = [];
     this.qaLoading = false;
     this.qaLoaded = false;
+    this.qaViewMode = 'card'; // 'card' or 'list'
   }
 
   async render() {
@@ -143,36 +144,106 @@ export class ManagerWorkspace {
       `;
     }
 
+    const header = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a; margin: 0;">Pending Ocular Audits Quality Assurance Queue</h3>
+        <div style="display: flex; gap: 0.4rem;">
+          <button type="button" class="btn ${this.qaViewMode === 'card' ? 'btn-primary' : 'btn-outline'} btn-qa-view" data-view="card" style="padding: 0.4rem 0.75rem; font-size: 0.75rem;">Card View</button>
+          <button type="button" class="btn ${this.qaViewMode === 'list' ? 'btn-primary' : 'btn-outline'} btn-qa-view" data-view="list" style="padding: 0.4rem 0.75rem; font-size: 0.75rem;">List View</button>
+        </div>
+      </div>
+    `;
+
+    if (this.pendingQAItems.length === 0) {
+      return `
+        <div class="form-card" style="padding: 1.5rem; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
+          ${header}
+          <div style="text-align: center; padding: 2rem; color: #64748b;">
+            All ocular audits approved! No pending QA items in queue.
+          </div>
+        </div>
+      `;
+    }
+
     return `
       <div class="form-card" style="padding: 1.5rem; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
-        <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a; margin-bottom: 1rem;">Pending Ocular Audits Quality Assurance Queue</h3>
+        ${header}
+        ${this.qaViewMode === 'list' ? this.renderQAListView() : this.renderQACardView()}
+      </div>
+    `;
+  }
 
-        <div style="display: flex; flex-direction: column; gap: 1rem;">
-          ${this.pendingQAItems.length > 0 ? this.pendingQAItems.map(item => `
-            <div style="padding: 1.25rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-lg); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);">
-              <div>
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                  <strong style="color: #0f172a; font-size: 1rem;">${item.clientName || 'Commercial Client'}</strong>
-                  <span class="badge" style="background: rgba(0, 174, 239, 0.15); color: var(--ecoworks-blue); font-size: 0.725rem; font-weight: 700; padding: 0.2rem 0.5rem;">${item.rnNo || 'RN-101'}</span>
-                </div>
-                <div style="font-size: 0.8rem; color: #64748b;">
-                  ${item.locationAddress || 'Manila City'} | Breaker: ${item.mainBreaker || '100A'} | Voltage: ${item.voltageSystem || '230V'}
-                </div>
-                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">
-                  Inspected by ${item.inspectedByName || 'Field Inspector'}
-                </div>
+  renderTeamSelect(item) {
+    const team = item.assignedTeam || '';
+    return `
+      <select class="form-select qa-team-select" data-rn="${item.rnNo}" style="font-size: 0.775rem; padding: 0.4rem 0.6rem;">
+        <option value="" ${team === '' ? 'selected' : ''}>Assign Team...</option>
+        <option value="TEAM_1" ${team === 'TEAM_1' ? 'selected' : ''}>Inspection Team 1</option>
+        <option value="TEAM_2" ${team === 'TEAM_2' ? 'selected' : ''}>Inspection Team 2</option>
+      </select>
+    `;
+  }
+
+  renderQACardView() {
+    return `
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        ${this.pendingQAItems.map(item => `
+          <div style="padding: 1.25rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-lg); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                <strong style="color: #0f172a; font-size: 1rem;">${item.clientName || 'Commercial Client'}</strong>
+                <span class="badge" style="background: rgba(0, 174, 239, 0.15); color: var(--ecoworks-blue); font-size: 0.725rem; font-weight: 700; padding: 0.2rem 0.5rem;">${item.rnNo || 'RN-101'}</span>
               </div>
-              <div style="display: flex; gap: 0.5rem;">
-                <button type="button" class="btn btn-secondary btn-qa-reject" data-rn="${item.rnNo}" style="padding: 0.45rem 0.75rem; font-size: 0.775rem;">Request Re-inspection</button>
-                <button type="button" class="btn btn-primary btn-qa-approve" data-rn="${item.rnNo}" style="padding: 0.45rem 0.85rem; font-size: 0.775rem;">Approve Audit QA</button>
+              <div style="font-size: 0.8rem; color: #64748b;">
+                ${item.locationAddress || 'Manila City'} | Breaker: ${item.mainBreaker || '100A'} | Voltage: ${item.voltageSystem || '230V'}
+              </div>
+              <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">
+                Inspected by ${item.inspectedByName || 'Field Inspector'}
               </div>
             </div>
-          `).join('') : `
-            <div style="text-align: center; padding: 2rem; color: #64748b;">
-              All ocular audits approved! No pending QA items in queue.
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              ${this.renderTeamSelect(item)}
+              <button type="button" class="btn btn-secondary btn-qa-reject" data-rn="${item.rnNo}" style="padding: 0.45rem 0.75rem; font-size: 0.775rem;">Request Re-inspection</button>
+              <button type="button" class="btn btn-primary btn-qa-approve" data-rn="${item.rnNo}" style="padding: 0.45rem 0.85rem; font-size: 0.775rem;">Approve Audit QA</button>
             </div>
-          `}
-        </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  renderQAListView() {
+    return `
+      <div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: var(--radius-lg);">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>RN Number</th>
+              <th>Client Name</th>
+              <th>Location</th>
+              <th>Breaker / Voltage</th>
+              <th>Inspector</th>
+              <th>Team</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this.pendingQAItems.map(item => `
+              <tr>
+                <td><span style="font-weight: 700; color: var(--ecoworks-blue);">${item.rnNo || 'N/A'}</span></td>
+                <td style="font-weight: 600; color: #0f172a;">${item.clientName || 'Commercial Client'}</td>
+                <td style="color: #64748b;">${item.locationAddress || 'Manila City'}</td>
+                <td style="color: #64748b;">${item.mainBreaker || '100A'} / ${item.voltageSystem || '230V'}</td>
+                <td style="color: #64748b;">${item.inspectedByName || 'Field Inspector'}</td>
+                <td>${this.renderTeamSelect(item)}</td>
+                <td style="text-align: right; white-space: nowrap;">
+                  <button type="button" class="btn-link btn-qa-reject" data-rn="${item.rnNo}" style="color: #dc2626;">Request Re-inspection</button>
+                  <button type="button" class="btn-link btn-qa-approve" data-rn="${item.rnNo}">Approve</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       </div>
     `;
   }
@@ -326,6 +397,40 @@ export class ManagerWorkspace {
           severity: AUDIT_SEVERITY.INFO
         });
         AppLayout.showToast(`Job dispatched to ${inspector}`);
+      });
+    });
+
+    // QA queue view toggle (card / list)
+    const qaViewBtns = this.container.querySelectorAll('.btn-qa-view');
+    qaViewBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.qaViewMode = btn.getAttribute('data-view');
+        this.render();
+      });
+    });
+
+    // QA team assignment dropdown
+    const teamSelects = this.container.querySelectorAll('.qa-team-select');
+    teamSelects.forEach(select => {
+      select.addEventListener('change', async () => {
+        const rn = select.getAttribute('data-rn');
+        const item = this.pendingQAItems.find(i => i.rnNo === rn);
+        if (!item) return;
+        const team = select.value;
+        select.disabled = true;
+
+        try {
+          await supabaseService.assignInspectionTeam(item.id, team || null);
+          item.assignedTeam = team;
+          const teamLabel = team === 'TEAM_1' ? 'Inspection Team 1' : team === 'TEAM_2' ? 'Inspection Team 2' : 'unassigned';
+          AppLayout.showToast(`${rn} assigned to ${teamLabel}`);
+        } catch (e) {
+          console.warn('[OIMS] Could not assign inspection team:', e);
+          AppLayout.showToast('Could not save team assignment — check your connection and try again.');
+          select.value = item.assignedTeam || '';
+        } finally {
+          select.disabled = false;
+        }
       });
     });
 
