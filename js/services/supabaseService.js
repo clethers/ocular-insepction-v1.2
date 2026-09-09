@@ -241,16 +241,25 @@ class SupabaseService {
         );
 
         if (error) throw error;
-        return (data || []).map(item => ({
-          id: item.id,
-          rnNo: item.rn_no,
-          installationNo: item.installation_no,
-          clientName: item.client_name,
-          scopeOfWorks: item.scope_of_works,
-          installerName: item.installer_name,
-          status: item.status,
-          createdAt: item.created_at
-        }));
+        return (data || []).map(item => {
+          const record = {
+            id: item.id,
+            rnNo: item.rn_no,
+            installationNo: item.installation_no,
+            clientName: item.client_name,
+            scopeOfWorks: item.scope_of_works,
+            installerName: item.installer_name,
+            status: item.status,
+            createdAt: item.created_at,
+            clientRepName: item.client_rep_name,
+            installerSigImg: item.installer_sig_img,
+            clientRepSigImg: item.client_rep_sig_img
+          };
+          for (const [localKey, column] of SupabaseService.ACTUAL_MATERIALS_FIELD_MAP) {
+            record[localKey] = item[column];
+          }
+          return record;
+        });
       } catch (err) {
         console.warn('[OIMS Supabase] Could not fetch all installations:', err.message);
       }
