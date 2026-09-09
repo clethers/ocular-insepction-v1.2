@@ -531,6 +531,76 @@ class SupabaseService {
     return payload;
   }
 
+  // Customer Care support tickets & escalations — see
+  // migrations/2026-09-09-support-tickets.sql. rn_no is a free-text,
+  // informal link to ocular_inspections (no FK), matching assigned_team's
+  // convention on that table.
+  async fetchSupportTickets() {
+    if (!this.isConfigured()) return [];
+    try {
+      const { data, error } = await this.withTimeout(
+        this.client
+          .from('support_tickets')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        3000,
+        'Fetch support tickets'
+      );
+      if (error) throw error;
+      return (data || []).map(row => this.mapTicketToLocal(row));
+    } catch (err) {
+      console.warn('[OIMS Supabase] Could not fetch support tickets:', err.message);
+      return [];
+    }
+  }
+
+  async createSupportTicket({ subject, description, priority, clientName, rnNo, createdBy }) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    const payload = {
+      subject,
+      description: description || null,
+      priority: priority || 'NORMAL',
+      client_name: clientName || null,
+      rn_no: rnNo || null,
+      created_by: createdBy || null
+    };
+    const { data, error } = await this.client
+      .from('support_tickets')
+      .insert([payload])
+      .select();
+    if (error) throw error;
+    return (data && data[0]) ? this.mapTicketToLocal(data[0]) : payload;
+  }
+
+  async resolveSupportTicket(id, resolvedBy) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    const { error } = await this.withTimeout(
+      this.client
+        .from('support_tickets')
+        .update({ status: 'RESOLVED', resolved_at: new Date().toISOString(), resolved_by: resolvedBy || null })
+        .eq('id', id),
+      3000,
+      'Resolve support ticket'
+    );
+    if (error) throw error;
+  }
+
+  mapTicketToLocal(row) {
+    return {
+      id: row.id,
+      clientName: row.client_name,
+      rnNo: row.rn_no,
+      subject: row.subject,
+      description: row.description,
+      priority: row.priority,
+      status: row.status,
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+      resolvedAt: row.resolved_at,
+      resolvedBy: row.resolved_by
+    };
+  }
+
   subscribeToReadyQueue(callback) {
     if (this.isConfigured()) {
       try {

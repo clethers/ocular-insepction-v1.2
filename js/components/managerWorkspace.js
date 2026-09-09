@@ -19,6 +19,9 @@ export class ManagerWorkspace {
     this.qaLoaded = false;
     this.qaViewMode = 'card'; // 'card' or 'list'
     this.fieldTeams = []; // "Operations Team 1/2" accounts — see fetchFieldTeams
+    this.supportTickets = [];
+    this.ticketsLoading = false;
+    this.ticketsLoaded = false;
   }
 
   async render() {
@@ -36,6 +39,13 @@ export class ManagerWorkspace {
       <div class="modal-overlay no-print" id="qa-approve-overlay" style="display: none;">
         <div class="modal-dialog" style="max-width: 460px;">
           <div id="qa-approve-content"></div>
+        </div>
+      </div>
+
+      <!-- New Support Ticket Overlay -->
+      <div class="modal-overlay no-print" id="new-ticket-overlay" style="display: none;">
+        <div class="modal-dialog" style="max-width: 460px;">
+          <div id="new-ticket-content"></div>
         </div>
       </div>
 
@@ -61,6 +71,26 @@ export class ManagerWorkspace {
     if (this.activeTab === 'qa' && !this.qaLoading && !this.qaLoaded) {
       await this.loadQAQueue();
     }
+
+    // Same ticketsLoaded-boolean gate as loadQAQueue above, for the same
+    // reason: a genuinely empty ticket list must not re-satisfy a
+    // length-based check and loop fetches against Supabase forever.
+    if (this.activeTab === 'tickets' && !this.ticketsLoading && !this.ticketsLoaded) {
+      await this.loadTickets();
+    }
+  }
+
+  async loadTickets() {
+    this.ticketsLoading = true;
+    try {
+      this.supportTickets = await supabaseService.fetchSupportTickets();
+    } catch (e) {
+      console.warn('[OIMS] Could not fetch support tickets:', e);
+      this.supportTickets = [];
+    }
+    this.ticketsLoading = false;
+    this.ticketsLoaded = true;
+    if (this.activeTab === 'tickets') this.render();
   }
 
   async loadQAQueue() {
@@ -275,35 +305,198 @@ export class ManagerWorkspace {
 
   // TAB 5: Support Tickets
   renderTicketsTab() {
+    const header = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a; margin: 0;">Customer Care Support Tickets & Escalations</h3>
+        <button type="button" class="btn btn-primary" id="btn-new-ticket" style="padding: 0.5rem 0.85rem; font-size: 0.8rem;">+ New Ticket</button>
+      </div>
+    `;
+
+    if (this.ticketsLoading) {
+      return `
+        <div class="form-card" style="text-align: center; padding: 3rem; color: #64748b;">
+          Loading Support Tickets...
+        </div>
+      `;
+    }
+
+    const openTickets = this.supportTickets.filter(t => t.status !== 'RESOLVED');
+    const resolvedTickets = this.supportTickets.filter(t => t.status === 'RESOLVED');
+
+    if (this.supportTickets.length === 0) {
+      return `
+        <div class="form-card" style="padding: 1.5rem; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
+          ${header}
+          <div style="text-align: center; padding: 2rem; color: #64748b;">
+            No support tickets logged yet.
+          </div>
+        </div>
+      `;
+    }
+
+    const priorityColors = {
+      HIGH: { bg: 'rgba(245, 158, 11, 0.2)', color: '#D97706' },
+      NORMAL: { bg: 'rgba(0, 174, 239, 0.15)', color: 'var(--ecoworks-blue)' },
+      LOW: { bg: '#f1f5f9', color: '#64748b' }
+    };
+
+    const renderTicketCard = (ticket) => {
+      const p = priorityColors[ticket.priority] || priorityColors.NORMAL;
+      return `
+        <div style="padding: 1rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.03);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <strong style="color: #0f172a;">${ticket.subject}</strong>
+              <span class="badge" style="background: ${p.bg}; color: ${p.color}; font-size: 0.7rem; font-weight: 800;">${ticket.priority === 'HIGH' ? 'HIGH PRIORITY' : ticket.priority}</span>
+              ${ticket.status === 'RESOLVED' ? '<span class="badge" style="background: #dcfce7; color: #15803d; font-size: 0.7rem; font-weight: 800;">RESOLVED</span>' : ''}
+            </div>
+            <span style="font-size: 0.775rem; color: #64748b; display: block; margin-top: 0.25rem;">
+              ${ticket.clientName ? `Client: ${ticket.clientName}` : ''}${ticket.clientName && ticket.rnNo ? ' | ' : ''}${ticket.rnNo ? `RN: ${ticket.rnNo}` : ''}
+              ${ticket.description ? `${(ticket.clientName || ticket.rnNo) ? ' — ' : ''}${ticket.description}` : ''}
+            </span>
+          </div>
+          ${ticket.status !== 'RESOLVED' ? `<button type="button" class="btn btn-secondary btn-resolve-ticket" data-id="${ticket.id}" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;">Resolve Ticket</button>` : ''}
+        </div>
+      `;
+    };
+
     return `
       <div class="form-card" style="padding: 1.5rem; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
-        <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a; margin-bottom: 1rem;">Customer Care Support Tickets & Escalations</h3>
-
+        ${header}
         <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-          <div style="padding: 1rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.03);">
-            <div>
-              <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <strong style="color: #0f172a;">Subdivision Gate Permit Access Note</strong>
-                <span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #D97706; font-size: 0.7rem; font-weight: 800;">HIGH PRIORITY</span>
-              </div>
-              <span style="font-size: 0.775rem; color: #64748b; display: block; margin-top: 0.25rem;">Client: Forbes Park Residence | Gate Code #9940 required for entry.</span>
-            </div>
-            <button type="button" class="btn btn-secondary btn-resolve-ticket" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;">Resolve Ticket</button>
-          </div>
-
-          <div style="padding: 1rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.03);">
-            <div>
-              <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <strong style="color: #0f172a;">Charger Specification Upgrade Request (7kW ➔ 22kW)</strong>
-                <span class="badge" style="background: rgba(0, 174, 239, 0.15); color: var(--ecoworks-blue); font-size: 0.7rem; font-weight: 800;">NORMAL</span>
-              </div>
-              <span style="font-size: 0.775rem; color: #64748b; display: block; margin-top: 0.25rem;">Client requested 3-phase 22kW fast charger upgrade prior to installation.</span>
-            </div>
-            <button type="button" class="btn btn-secondary btn-resolve-ticket" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;">Resolve Ticket</button>
-          </div>
+          ${openTickets.map(renderTicketCard).join('')}
+          ${resolvedTickets.map(renderTicketCard).join('')}
         </div>
       </div>
     `;
+  }
+
+  openNewTicketOverlay() {
+    const overlay = this.container.querySelector('#new-ticket-overlay');
+    const content = this.container.querySelector('#new-ticket-content');
+    if (!overlay || !content) return;
+
+    content.innerHTML = `
+      <h3 class="modal-title">New Support Ticket</h3>
+      <p class="modal-subtitle">Log a client support ticket or escalation.</p>
+
+      <div class="form-group">
+        <label class="form-label">Subject</label>
+        <input type="text" class="form-input" id="ticket-subject" placeholder="e.g. Charger Specification Upgrade Request" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="ticket-description" rows="3" placeholder="Details of the ticket or escalation"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <select class="form-select" id="ticket-priority">
+          <option value="HIGH">High</option>
+          <option value="NORMAL" selected>Normal</option>
+          <option value="LOW">Low</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Client Name <span class="form-label-note">(optional)</span></label>
+        <input type="text" class="form-input" id="ticket-client-name" placeholder="e.g. Forbes Park Residence" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">RN Number <span class="form-label-note">(optional)</span></label>
+        <input type="text" class="form-input" id="ticket-rn-no" placeholder="e.g. RN-88107" />
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="btn-cancel-new-ticket">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-new-ticket">Create Ticket</button>
+      </div>
+    `;
+
+    content.querySelector('#btn-cancel-new-ticket').addEventListener('click', () => this.closeNewTicketOverlay());
+    content.querySelector('#btn-confirm-new-ticket').addEventListener('click', (e) => this.confirmCreateTicket(e.currentTarget));
+
+    overlay.style.display = 'flex';
+  }
+
+  closeNewTicketOverlay() {
+    const overlay = this.container.querySelector('#new-ticket-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  async confirmCreateTicket(btn) {
+    const content = this.container.querySelector('#new-ticket-content');
+    const subject = content.querySelector('#ticket-subject').value.trim();
+    if (!subject) {
+      AppLayout.showToast('Subject is required.');
+      return;
+    }
+
+    const description = content.querySelector('#ticket-description').value.trim();
+    const priority = content.querySelector('#ticket-priority').value;
+    const clientName = content.querySelector('#ticket-client-name').value.trim();
+    const rnNo = content.querySelector('#ticket-rn-no').value.trim();
+
+    btn.disabled = true;
+    btn.textContent = 'Creating...';
+
+    try {
+      const user = await AuthGuard.getSessionUser();
+      const ticket = await supabaseService.createSupportTicket({
+        subject,
+        description: description || null,
+        priority,
+        clientName: clientName || null,
+        rnNo: rnNo || null,
+        createdBy: user?.id || null
+      });
+      auditLogService.logEvent({
+        category: AUDIT_CATEGORIES.CUSTOMER_CARE,
+        eventType: 'TICKET_CREATED',
+        description: `Logged client support ticket: ${subject}`,
+        severity: AUDIT_SEVERITY.INFO
+      });
+      this.supportTickets.unshift(ticket);
+      this.closeNewTicketOverlay();
+      AppLayout.showToast('Support ticket logged successfully.');
+      this.render();
+    } catch (e) {
+      console.warn('[OIMS] Could not create support ticket:', e);
+      AppLayout.showToast('Could not create ticket — check your connection and try again.');
+      btn.disabled = false;
+      btn.textContent = 'Create Ticket';
+    }
+  }
+
+  async resolveSupportTicket(id, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Resolving...';
+
+    try {
+      const user = await AuthGuard.getSessionUser();
+      await supabaseService.resolveSupportTicket(id, user?.id || null);
+      auditLogService.logEvent({
+        category: AUDIT_CATEGORIES.CUSTOMER_CARE,
+        eventType: 'TICKET_RESOLVED',
+        description: `Resolved support ticket ${id}`,
+        severity: AUDIT_SEVERITY.INFO
+      });
+      const ticket = this.supportTickets.find(t => t.id === id);
+      if (ticket) {
+        ticket.status = 'RESOLVED';
+        ticket.resolvedAt = new Date().toISOString();
+        ticket.resolvedBy = user?.id || null;
+      }
+      AppLayout.showToast('Ticket resolved.');
+      this.render();
+    } catch (e) {
+      console.warn('[OIMS] Could not resolve support ticket:', e);
+      AppLayout.showToast('Could not resolve ticket — check your connection and try again.');
+      btn.disabled = false;
+      btn.textContent = 'Resolve Ticket';
+    }
   }
 
   // TAB 6: Material Demand
@@ -555,20 +748,32 @@ export class ManagerWorkspace {
       });
     });
 
-    // Create Ticket Button
-    const ticketBtn = this.container.querySelector('#btn-create-support-ticket');
-    if (ticketBtn) {
-      ticketBtn.addEventListener('click', () => {
-        const note = prompt('Enter Client Support Ticket Note:');
-        if (!note) return;
-        auditLogService.logEvent({
-          category: AUDIT_CATEGORIES.CUSTOMER_CARE,
-          eventType: 'TICKET_CREATED',
-          description: `Logged client support ticket: ${note}`,
-          severity: AUDIT_SEVERITY.INFO
-        });
-        AppLayout.showToast('Support ticket logged successfully.');
+    // New Ticket button — opens the create-ticket overlay
+    const newTicketBtn = this.container.querySelector('#btn-new-ticket');
+    if (newTicketBtn) {
+      newTicketBtn.addEventListener('click', () => this.openNewTicketOverlay());
+    }
+
+    // New ticket overlay dismissal (backdrop click / Escape)
+    const newTicketOverlay = this.container.querySelector('#new-ticket-overlay');
+    if (newTicketOverlay) {
+      newTicketOverlay.addEventListener('click', (e) => {
+        if (e.target === newTicketOverlay) this.closeNewTicketOverlay();
       });
     }
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const overlayEl = this.container.querySelector('#new-ticket-overlay');
+      if (overlayEl && overlayEl.style.display !== 'none') this.closeNewTicketOverlay();
+    });
+
+    // Resolve Ticket button
+    const resolveTicketBtns = this.container.querySelectorAll('.btn-resolve-ticket');
+    resolveTicketBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-id');
+        this.resolveSupportTicket(id, btn);
+      });
+    });
   }
 }

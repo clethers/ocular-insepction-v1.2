@@ -105,7 +105,7 @@ export class AppLayout {
                 <span>Field Calendar</span>
               </a>
 
-              <a class="sidebar-nav-btn disabled" title="Support Tickets (Coming Soon)" aria-disabled="true">
+              <a href="/manager/tickets" class="sidebar-nav-btn ${isActive('/manager/tickets') ? 'active' : ''}" title="Support Tickets">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 1 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"/><line x1="13" y1="5" x2="13" y2="19" stroke-dasharray="2 2"/></svg>
                 <span>Support Tickets</span>
               </a>
