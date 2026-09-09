@@ -491,7 +491,7 @@ export class ClientDirectory {
     };
 
     listEl.innerHTML = `
-      <div class="directory-table-wrapper">
+      <div class="directory-table-wrapper hide-on-mobile">
         <table class="directory-table">
           <thead>
             <tr>
@@ -523,6 +523,30 @@ export class ClientDirectory {
             }).join('')}
           </tbody>
         </table>
+      </div>
+
+      <div class="hide-on-desktop">
+        ${filtered.map(r => {
+          const statusMeta = this.getStatusMeta(r.status);
+          return `
+            <div class="record-card">
+              <div class="record-top">
+                <span class="record-title">${escapeHTML(r.clientName || 'Unnamed Client')}</span>
+                <span class="record-badge" style="background: ${statusMeta.color}22; color: ${statusMeta.color};">${escapeHTML(statusMeta.label)}</span>
+              </div>
+              <div class="record-meta">
+                <span class="rn">${escapeHTML(r.rnNo || 'N/A')}</span>
+                <span class="dot">&middot;</span>
+                <span>${escapeHTML(r.dateTimeDisplay || 'Recent')}</span>
+              </div>
+              <div class="record-sub">${escapeHTML(r.locationAddress || 'No address on file')}</div>
+              <div class="record-actions">
+                <button type="button" class="btn-view-client" data-rn="${escapeHTML(r.rnNo || '')}">View Details</button>
+                <button type="button" class="btn-print-client" data-rn="${escapeHTML(r.rnNo || '')}">Print</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
       </div>
     `;
 

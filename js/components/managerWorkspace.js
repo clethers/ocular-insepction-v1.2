@@ -165,7 +165,7 @@ export class ManagerWorkspace {
     const header = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
         <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a; margin: 0;">Pending Ocular Audits Quality Assurance Queue</h3>
-        <div style="display: flex; gap: 0.4rem;">
+        <div class="hide-on-mobile" style="display: flex; gap: 0.4rem;">
           <button type="button" class="btn ${this.qaViewMode === 'card' ? 'btn-primary' : 'btn-outline'} btn-qa-view" data-view="card" style="padding: 0.4rem 0.75rem; font-size: 0.75rem;">Card View</button>
           <button type="button" class="btn ${this.qaViewMode === 'list' ? 'btn-primary' : 'btn-outline'} btn-qa-view" data-view="list" style="padding: 0.4rem 0.75rem; font-size: 0.75rem;">List View</button>
         </div>
@@ -183,10 +183,15 @@ export class ManagerWorkspace {
       `;
     }
 
+    // List View doesn't fit a phone screen — below 700px, always show the
+    // (already-compact) Card view regardless of the stored preference.
+    const isMobile = window.matchMedia('(max-width: 700px)').matches;
+    const useListView = this.qaViewMode === 'list' && !isMobile;
+
     return `
       <div class="form-card" style="padding: 1.5rem; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
         ${header}
-        ${this.qaViewMode === 'list' ? this.renderQAListView() : this.renderQACardView()}
+        ${useListView ? this.renderQAListView() : this.renderQACardView()}
       </div>
     `;
   }

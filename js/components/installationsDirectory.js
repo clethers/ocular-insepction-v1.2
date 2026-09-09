@@ -318,7 +318,7 @@ export class InstallationsDirectory {
     };
 
     listEl.innerHTML = `
-      <div class="directory-table-wrapper">
+      <div class="directory-table-wrapper hide-on-mobile">
         <table class="directory-table">
           <thead>
             <tr>
@@ -345,6 +345,26 @@ export class InstallationsDirectory {
             `).join('')}
           </tbody>
         </table>
+      </div>
+
+      <div class="hide-on-desktop">
+        ${filtered.map(r => `
+          <div class="record-card">
+            <div class="record-top">
+              <span class="record-title">${escapeHTML(r.clientName || 'Unnamed Client')}</span>
+              <span class="record-badge" style="background: #dcfce7; color: #15803d;">${escapeHTML(r.status || 'COMMISSIONED')}</span>
+            </div>
+            <div class="record-meta">
+              <span class="rn">${escapeHTML(r.installationNo || 'N/A')}</span>
+              <span class="dot">&middot;</span>
+              <span class="rn">${escapeHTML(r.rnNo || 'N/A')}</span>
+            </div>
+            <div class="record-sub">${escapeHTML(r.scopeOfWorks || 'Installation')} &middot; ${escapeHTML(r.installerName || 'N/A')} &middot; ${escapeHTML(formatDate(r.createdAt))}</div>
+            <div class="record-actions">
+              <button type="button" class="btn-view-installation" data-id="${escapeHTML(String(r.id ?? ''))}">View Details</button>
+            </div>
+          </div>
+        `).join('')}
       </div>
     `;
 

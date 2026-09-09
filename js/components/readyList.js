@@ -62,8 +62,10 @@ export class ReadyList {
             </div>
 
             <div class="search-form-meta" style="display: flex; align-items: center; gap: 0.5rem;">
-              <button type="button" class="btn ${this.viewMode === 'card' ? 'btn-primary' : 'btn-outline'} btn-ready-view" data-view="card" style="padding: 0.5rem 0.85rem; font-size: 0.775rem;">Card View</button>
-              <button type="button" class="btn ${this.viewMode === 'list' ? 'btn-primary' : 'btn-outline'} btn-ready-view" data-view="list" style="padding: 0.5rem 0.85rem; font-size: 0.775rem;">List View</button>
+              <div class="hide-on-mobile" style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn ${this.viewMode === 'card' ? 'btn-primary' : 'btn-outline'} btn-ready-view" data-view="card" style="padding: 0.5rem 0.85rem; font-size: 0.775rem;">Card View</button>
+                <button type="button" class="btn ${this.viewMode === 'list' ? 'btn-primary' : 'btn-outline'} btn-ready-view" data-view="list" style="padding: 0.5rem 0.85rem; font-size: 0.775rem;">List View</button>
+              </div>
               <button class="btn btn-outline" id="btn-refresh-ready" style="background: #ffffff; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
                 Refresh List
@@ -89,7 +91,7 @@ export class ReadyList {
         </div>
 
         <!-- Ready Items: Card Grid or List Table depending on viewMode -->
-        <div class="${this.viewMode === 'list' ? '' : 'ready-cards-grid'}" id="ready-cards-container">
+        <div class="${this.effectiveViewMode() === 'list' ? '' : 'ready-cards-grid'}" id="ready-cards-container">
           ${this.renderItems(uniqueItems)}
         </div>
       </div>
@@ -98,8 +100,15 @@ export class ReadyList {
     this.initEvents(uniqueItems);
   }
 
+  // List view doesn't fit a phone screen — below 700px, always fall back
+  // to the (already-compact) Card view regardless of the stored preference.
+  effectiveViewMode() {
+    const isMobile = window.matchMedia('(max-width: 700px)').matches;
+    return isMobile ? 'card' : this.viewMode;
+  }
+
   renderItems(items) {
-    return this.viewMode === 'list' ? this.renderListView(items) : this.renderCards(items);
+    return this.effectiveViewMode() === 'list' ? this.renderListView(items) : this.renderCards(items);
   }
 
   renderListView(items) {
