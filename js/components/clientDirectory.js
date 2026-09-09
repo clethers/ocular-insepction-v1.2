@@ -22,6 +22,7 @@ export class ClientDirectory {
     this.statusFilter = 'ALL';
     this.sortKey = 'dateTimeDisplay';
     this.sortDir = 'desc';
+    this.pendingImportRows = [];
   }
 
   async render() {
@@ -47,6 +48,8 @@ export class ClientDirectory {
           <select id="select-client-directory-status" class="form-select" style="max-width: 220px;">
             <option value="ALL">All Statuses</option>
           </select>
+          <button type="button" class="btn btn-outline no-print" id="btn-import-clients" style="padding: 0.6rem 1rem; font-size: 0.825rem;">Import CSV</button>
+          <input type="file" id="input-import-clients-file" accept=".csv,text/csv" style="display: none;" />
         </div>
 
         <div id="client-directory-list">
@@ -61,6 +64,13 @@ export class ClientDirectory {
           <div class="modal-footer">
             <button type="button" class="btn btn-outline" id="btn-close-client-detail">Close</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Import Clients Preview Overlay -->
+      <div class="modal-overlay no-print" id="import-clients-overlay" style="display: none;">
+        <div class="modal-dialog" style="max-width: 760px; max-height: 85vh; display: flex; flex-direction: column;">
+          <div id="import-clients-content" style="overflow-y: auto;"></div>
         </div>
       </div>
     `;
@@ -99,6 +109,30 @@ export class ClientDirectory {
       if (e.key !== 'Escape') return;
       const overlayEl = this.container.querySelector('#client-detail-overlay');
       if (overlayEl && overlayEl.style.display !== 'none') this.closeClientDetail();
+    });
+
+    const importBtn = this.container.querySelector('#btn-import-clients');
+    const importFileInput = this.container.querySelector('#input-import-clients-file');
+    if (importBtn && importFileInput) {
+      importBtn.addEventListener('click', () => importFileInput.click());
+      importFileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) this.handleImportFile(file);
+        importFileInput.value = '';
+      });
+    }
+
+    const importOverlay = this.container.querySelector('#import-clients-overlay');
+    if (importOverlay) {
+      importOverlay.addEventListener('click', (e) => {
+        if (e.target === importOverlay) this.closeImportOverlay();
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const overlayEl = this.container.querySelector('#import-clients-overlay');
+      if (overlayEl && overlayEl.style.display !== 'none') this.closeImportOverlay();
     });
   }
 
@@ -185,6 +219,197 @@ export class ClientDirectory {
         `).join('')}
       </table>
     `;
+  }
+
+  // Minimal RFC4180-style CSV parser — handles quoted fields, embedded
+  // commas, and escaped ("") quotes. Good enough for a simple client
+  // import sheet; not meant to handle arbitrary spreadsheet exports.
+  parseCSV(text) {
+    const rows = [];
+    let row = [];
+    let field = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (inQuotes) {
+        if (char === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }
+          else inQuotes = false;
+        } else {
+          field += char;
+        }
+      } else if (char === '"') {
+        inQuotes = true;
+      } else if (char === ',') {
+        row.push(field);
+        field = '';
+      } else if (char === '\n' || char === '\r') {
+        if (char === '\r' && text[i + 1] === '\n') i++;
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = '';
+      } else {
+        field += char;
+      }
+    }
+    if (field !== '' || row.length > 0) {
+      row.push(field);
+      rows.push(row);
+    }
+
+    return rows.filter(r => r.some(cell => cell.trim() !== ''));
+  }
+
+  async handleImportFile(file) {
+    const text = await file.text();
+    const rows = this.parseCSV(text);
+
+    if (rows.length < 2) {
+      AppLayout.showToast('CSV file has no data rows.');
+      return;
+    }
+
+    const headers = rows[0].map(h => h.trim().toLowerCase());
+    const colIndex = (names) => {
+      for (const name of names) {
+        const i = headers.indexOf(name);
+        if (i !== -1) return i;
+      }
+      return -1;
+    };
+
+    const idx = {
+      clientName: colIndex(['client name', 'clientname', 'name']),
+      rnNo: colIndex(['rn number', 'rn no', 'rnno', 'rn']),
+      contactNo: colIndex(['contact no', 'contact number', 'contactno', 'phone']),
+      locationAddress: colIndex(['location address', 'address', 'location']),
+      voltageSystem: colIndex(['voltage system', 'voltage']),
+      mainBreaker: colIndex(['main breaker', 'breaker']),
+      status: colIndex(['status'])
+    };
+
+    if (idx.clientName === -1 || idx.rnNo === -1) {
+      AppLayout.showToast('CSV must include "Client Name" and "RN Number" columns.');
+      return;
+    }
+
+    const get = (cols, i) => (i !== -1 && cols[i] !== undefined) ? cols[i].trim() : '';
+    const validStatuses = ['PENDING_QA', 'READY_FOR_INSTALLATION', 'RE_INSPECTION_REQUESTED'];
+
+    this.pendingImportRows = rows.slice(1).map((cols, i) => {
+      const clientName = get(cols, idx.clientName);
+      const rnNo = get(cols, idx.rnNo);
+      const statusRaw = get(cols, idx.status).toUpperCase();
+      const errors = [];
+      if (!clientName) errors.push('Missing Client Name');
+      if (!rnNo) errors.push('Missing RN Number');
+
+      return {
+        rowNum: i + 2, // +1 for the header row, +1 to make it 1-indexed
+        clientName,
+        rnNo,
+        contactNo: get(cols, idx.contactNo),
+        locationAddress: get(cols, idx.locationAddress),
+        voltageSystem: get(cols, idx.voltageSystem),
+        mainBreaker: get(cols, idx.mainBreaker),
+        status: validStatuses.includes(statusRaw) ? statusRaw : 'PENDING_QA',
+        errors
+      };
+    });
+
+    this.openImportOverlay();
+  }
+
+  openImportOverlay() {
+    const overlay = this.container.querySelector('#import-clients-overlay');
+    const content = this.container.querySelector('#import-clients-content');
+    if (!overlay || !content) return;
+
+    const validRows = this.pendingImportRows.filter(r => r.errors.length === 0);
+    const invalidCount = this.pendingImportRows.length - validRows.length;
+
+    content.innerHTML = `
+      <h3 class="modal-title">Import Clients from CSV</h3>
+      <p class="modal-subtitle">
+        ${this.pendingImportRows.length} row${this.pendingImportRows.length === 1 ? '' : 's'} found — ${validRows.length} ready to import${invalidCount ? `, ${invalidCount} skipped due to errors` : ''}.
+      </p>
+
+      <div style="overflow: auto; border: 1px solid #e2e8f0; border-radius: var(--radius-lg); max-height: 340px;">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>Row</th>
+              <th>Client Name</th>
+              <th>RN Number</th>
+              <th>Contact No</th>
+              <th>Location</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this.pendingImportRows.map(r => `
+              <tr style="${r.errors.length ? 'background: #fef2f2;' : ''}">
+                <td style="color: #64748b;">${r.rowNum}</td>
+                <td style="font-weight: 600; color: #0f172a;">${escapeHTML(r.clientName || '—')}</td>
+                <td style="color: var(--ecoworks-blue); font-weight: 700;">${escapeHTML(r.rnNo || '—')}</td>
+                <td style="color: #64748b;">${escapeHTML(r.contactNo || '—')}</td>
+                <td style="color: #64748b;">${escapeHTML(r.locationAddress || '—')}</td>
+                <td style="color: ${r.errors.length ? '#dc2626' : '#64748b'};">${r.errors.length ? escapeHTML(r.errors.join(', ')) : escapeHTML(r.status)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="btn-cancel-import-clients">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-import-clients" ${validRows.length === 0 ? 'disabled' : ''}>Import ${validRows.length} Client${validRows.length === 1 ? '' : 's'}</button>
+      </div>
+    `;
+
+    content.querySelector('#btn-cancel-import-clients').addEventListener('click', () => this.closeImportOverlay());
+    const confirmBtn = content.querySelector('#btn-confirm-import-clients');
+    if (confirmBtn) confirmBtn.addEventListener('click', (e) => this.confirmImport(e.currentTarget));
+
+    overlay.style.display = 'flex';
+  }
+
+  closeImportOverlay() {
+    const overlay = this.container.querySelector('#import-clients-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  async confirmImport(btn) {
+    const validRows = this.pendingImportRows.filter(r => r.errors.length === 0);
+    if (validRows.length === 0) return;
+
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Importing...';
+
+    try {
+      const imported = await supabaseService.bulkImportInspections(validRows);
+      auditLogService.logEvent({
+        category: AUDIT_CATEGORIES.CLIENT_RECORDS,
+        eventType: 'CLIENTS_IMPORTED',
+        description: `Imported ${imported.length} client record(s) via CSV`,
+        severity: AUDIT_SEVERITY.INFO
+      });
+      this.closeImportOverlay();
+      AppLayout.showToast(`Imported ${imported.length} client record(s).`);
+
+      const { records, source } = await supabaseService.fetchAllInspections();
+      this.records = records;
+      this.dataSource = source;
+      this.renderList();
+    } catch (err) {
+      console.warn('[OIMS ClientDirectory] Import failed:', err.message);
+      AppLayout.showToast('Could not import clients — check your connection and try again.');
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
   }
 
   getStatusMeta(status) {

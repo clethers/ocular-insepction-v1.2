@@ -179,6 +179,36 @@ class SupabaseService {
     if (error) throw error;
   }
 
+  // Bulk-creates client records from a parsed CSV (Client Directory's
+  // Import CSV button). Every row must carry the exact same set of keys —
+  // PostgREST's bulk insert rejects a batch where rows have different
+  // shapes — so this builds a fixed, uniform payload per row rather than
+  // reusing mapLocalToSupabase (which omits undefined fields per row and
+  // would produce mismatched shapes here). Upserts on rn_no so re-running
+  // an import with overlapping rows updates rather than errors.
+  async bulkImportInspections(rows) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    if (!rows || rows.length === 0) return [];
+
+    const payload = rows.map(r => ({
+      client_name: r.clientName,
+      rn_no: r.rnNo,
+      contact_no: r.contactNo || null,
+      location_address: r.locationAddress || null,
+      voltage_system: r.voltageSystem || null,
+      main_breaker: r.mainBreaker || null,
+      status: r.status || 'PENDING_QA'
+    }));
+
+    const { data, error } = await this.client
+      .from('ocular_inspections')
+      .upsert(payload, { onConflict: 'rn_no' })
+      .select();
+
+    if (error) throw error;
+    return data || [];
+  }
+
   async fetchAllInspections() {
     if (this.isConfigured()) {
       try {
