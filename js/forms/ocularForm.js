@@ -1153,12 +1153,18 @@ export class OcularForm {
         const user = await AuthGuard.getSessionUser();
         if (user) formData.createdBy = user.id;
 
-        FormStorage.saveReadyInstallation(formData);
-        await supabaseService.saveOcularInspection(formData);
-        this.showToast('Submitted for Customer Care QA Review! Synced to Supabase Cloud...');
-        setTimeout(() => {
-          import('../router.js').then(({ Router }) => Router.navigate('/ocular/history'));
-        }, 1200);
+        readyBtn.disabled = true;
+        try {
+          await supabaseService.saveOcularInspection(formData);
+          this.showToast('Submitted for Customer Care QA Review! Synced to Supabase Cloud...');
+          setTimeout(() => {
+            import('../router.js').then(({ Router }) => Router.navigate('/ocular/history'));
+          }, 1200);
+        } catch (err) {
+          console.warn('[OIMS] Could not submit ocular inspection:', err);
+          this.showToast('Could not submit — check your connection and try again.');
+          readyBtn.disabled = false;
+        }
       });
     }
 

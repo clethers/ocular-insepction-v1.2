@@ -6,7 +6,6 @@
 import logoUrl from '../../assets/ecoworks-logo.png';
 import { AuthGuard } from './authGuard.js';
 import { USER_ROLES } from '../services/userService.js';
-import { FormStorage } from './formStorage.js';
 import { supabaseService } from '../services/supabaseService.js';
 
 export class AppLayout {
@@ -38,11 +37,6 @@ export class AppLayout {
       if (href === '/ocular' && (normPath === '/ocular/ocular' || normPath === '/ocular')) return true;
       return false;
     };
-
-    let readyCount = 0;
-    try {
-      readyCount = (FormStorage.listReadyInstallations() || []).length;
-    } catch (e) {}
 
     appElem.innerHTML = `
       <div class="app-layout">
@@ -94,7 +88,6 @@ export class AppLayout {
               <a href="/manager/qa" class="sidebar-nav-btn ${isActive('/manager/qa') ? 'active' : ''}" title="Audit QA Queue">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><polyline points="9 14 11 16 15 12"/></svg>
                 <span>Audit QA Queue</span>
-                ${readyCount > 0 ? `<span class="sidebar-counter-badge">${readyCount}</span>` : ''}
               </a>
 
               <a class="sidebar-nav-btn disabled" title="360 Client Lookup (Coming Soon)" aria-disabled="true">
@@ -133,7 +126,6 @@ export class AppLayout {
             <a href="/ocular/ready" class="sidebar-nav-btn ${isActive('/ocular/ready') ? 'active' : ''}" title="Ready for Installation Queue">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
               <span>Ready for Install</span>
-              ${readyCount > 0 ? `<span class="sidebar-counter-badge">${readyCount}</span>` : ''}
             </a>
 
           </nav>

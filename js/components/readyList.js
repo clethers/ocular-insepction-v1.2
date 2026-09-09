@@ -3,7 +3,6 @@
  * Displays completed & approved Ocular Inspections ready for EV Charger Installation execution.
  */
 
-import { FormStorage } from './formStorage.js';
 import { READY_INSTALLATIONS_PRESETS } from '../sampleData.js';
 import { supabaseService } from '../services/supabaseService.js';
 import { escapeHTML } from '../utils/security.js';
@@ -24,7 +23,6 @@ export class ReadyList {
     `;
 
     let cloudReadyItems = [];
-    let savedReadyItems = [];
 
     try {
       cloudReadyItems = (await supabaseService.fetchReadyInspections()) || [];
@@ -32,17 +30,7 @@ export class ReadyList {
       console.warn('[OIMS] Could not fetch cloud inspections:', e);
     }
 
-    try {
-      // FormStorage's local cache is status-agnostic (it also holds items
-      // still PENDING_QA or sent back RE_INSPECTION_REQUESTED) — only the
-      // ones actually cleared by Customer Care belong in this queue.
-      savedReadyItems = (FormStorage.listReadyInstallations() || [])
-        .filter(item => item.status === 'READY_FOR_INSTALLATION');
-    } catch (e) {
-      console.warn('[OIMS] Could not fetch saved installations:', e);
-    }
-
-    const readyItems = [...cloudReadyItems, ...savedReadyItems, ...READY_INSTALLATIONS_PRESETS];
+    const readyItems = [...cloudReadyItems, ...READY_INSTALLATIONS_PRESETS];
 
     // Deduplicate by rnNo if any match
     const uniqueItems = [];

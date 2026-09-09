@@ -2,8 +2,6 @@
  * OIMS — Supabase Integration & Hybrid Cloud Data Service
  */
 
-import { FormStorage } from '../components/formStorage.js';
-
 class SupabaseService {
   constructor() {
     this.supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || localStorage.getItem('oims_supabase_url') || '';
@@ -56,20 +54,13 @@ class SupabaseService {
         );
 
         if (error) throw error;
-        if (data && data.length > 0) {
-          return data.map(item => this.mapSupabaseToLocal(item));
-        }
+        return (data || []).map(item => this.mapSupabaseToLocal(item));
       } catch (err) {
-        console.warn('[OIMS Supabase] Falling back to local storage cache:', err.message);
+        console.warn('[OIMS Supabase] Could not fetch ready inspections:', err.message);
       }
     }
 
-    // Fallback to local storage
-    try {
-      return FormStorage.listReadyInstallations() || [];
-    } catch (e) {
-      return [];
-    }
+    return [];
   }
 
   // Customer Care QA queue — submissions awaiting first-pass review, before
@@ -91,15 +82,11 @@ class SupabaseService {
         if (error) throw error;
         return (data || []).map(item => this.mapSupabaseToLocal(item));
       } catch (err) {
-        console.warn('[OIMS Supabase] Falling back to local storage cache:', err.message);
+        console.warn('[OIMS Supabase] Could not fetch pending QA inspections:', err.message);
       }
     }
 
-    try {
-      return (FormStorage.listReadyInstallations() || []).filter(item => item.status === 'PENDING_QA');
-    } catch (e) {
-      return [];
-    }
+    return [];
   }
 
   // An inspector's own submissions still moving through the QA pipeline
@@ -161,15 +148,11 @@ class SupabaseService {
         if (error) throw error;
         return { records: (data || []).map(item => this.mapSupabaseToLocal(item)), source: 'cloud' };
       } catch (err) {
-        console.warn('[OIMS Supabase] Falling back to local storage cache:', err.message);
+        console.warn('[OIMS Supabase] Could not fetch all inspections:', err.message);
       }
     }
 
-    try {
-      return { records: FormStorage.listReadyInstallations() || [], source: 'local' };
-    } catch (e) {
-      return { records: [], source: 'local' };
-    }
+    return { records: [], source: 'cloud' };
   }
 
   async archiveInspection(id) {
@@ -182,25 +165,21 @@ class SupabaseService {
     if (error) throw error;
   }
 
+  // Throws on failure — there's no local fallback to quietly land in
+  // instead, so a failed save must be visible to the caller rather than
+  // reported as success.
   async saveOcularInspection(formData) {
-    const localSaved = FormStorage.saveReadyInstallation(formData);
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
 
-    if (this.isConfigured()) {
-      try {
-        const payload = this.mapLocalToSupabase(formData);
-        const { data, error } = await this.client
-          .from('ocular_inspections')
-          .upsert(payload, { onConflict: 'rn_no' })
-          .select();
+    const payload = this.mapLocalToSupabase(formData);
+    const { data, error } = await this.client
+      .from('ocular_inspections')
+      .upsert(payload, { onConflict: 'rn_no' })
+      .select();
 
-        if (error) throw error;
-        console.log('[OIMS Supabase] Saved ocular inspection to Supabase cloud:', data);
-      } catch (err) {
-        console.warn('[OIMS Supabase] Saved locally. Sync pending to Supabase:', err.message);
-      }
-    }
-
-    return localSaved;
+    if (error) throw error;
+    console.log('[OIMS Supabase] Saved ocular inspection to Supabase cloud:', data);
+    return (data && data[0]) ? this.mapSupabaseToLocal(data[0]) : formData;
   }
 
   // Actual-materials-used fields captured on the Installation form (Equipment
@@ -493,22 +472,14 @@ class SupabaseService {
       }
     }
 
-    // Fallback to FormStorage local records (defaults to 0 if empty)
-    const localItems = FormStorage.listReadyInstallations() || [];
-    const installed = localItems.filter(i => i.status === 'INSTALLED' || i.status === 'COMMISSIONED').length;
-    const pending = localItems.filter(i => !i.status || i.status === 'PENDING' || i.status === 'READY_FOR_INSTALLATION' || i.status === 'VERIFIED').length;
-    const cancelled = localItems.filter(i => i.status === 'CANCELLED').length;
-    const total = installed + pending + cancelled;
-    const conversionRate = total > 0 ? (((installed + pending) / total) * 100).toFixed(1) + '%' : '0.0%';
-
     return {
-      installed,
-      pending,
-      cancelled,
-      conversionRate,
-      totalLeads: localItems.length,
-      auditsCount: pending + installed,
-      handoversCount: installed
+      installed: 0,
+      pending: 0,
+      cancelled: 0,
+      conversionRate: '0.0%',
+      totalLeads: 0,
+      auditsCount: 0,
+      handoversCount: 0
     };
   }
 }

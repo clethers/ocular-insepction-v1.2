@@ -4,7 +4,6 @@
  */
 
 import { supabaseService } from '../services/supabaseService.js';
-import { FormStorage } from './formStorage.js';
 import { AuthGuard } from './authGuard.js';
 import { auditLogService, AUDIT_CATEGORIES, AUDIT_SEVERITY } from '../services/auditLogService.js';
 import { AppLayout } from './appLayout.js';
@@ -16,6 +15,7 @@ export class ManagerWorkspace {
     this.activeTab = 'qa'; // 'dispatch', 'qa', 'clientsearch', 'calendar', 'tickets', 'materials', 'sms', 'kpis' — qa is the only tab wired to real data, so it's the default landing tab
     this.pendingQAItems = [];
     this.qaLoading = false;
+    this.qaLoaded = false;
   }
 
   async render() {
@@ -37,7 +37,12 @@ export class ManagerWorkspace {
 
     this.bindEvents();
 
-    if (this.activeTab === 'qa' && !this.qaLoading && this.pendingQAItems.length === 0) {
+    // qaLoaded (not pendingQAItems.length) gates this so a genuinely empty
+    // queue doesn't re-trigger a fetch on every render — loadQAQueue()
+    // itself calls render() again once it resolves, and an empty result
+    // would otherwise re-satisfy a length-based check forever, looping
+    // requests against Supabase indefinitely.
+    if (this.activeTab === 'qa' && !this.qaLoading && !this.qaLoaded) {
       await this.loadQAQueue();
     }
   }
@@ -51,6 +56,7 @@ export class ManagerWorkspace {
       this.pendingQAItems = [];
     }
     this.qaLoading = false;
+    this.qaLoaded = true;
     if (this.activeTab === 'qa') this.render();
   }
 
@@ -277,24 +283,15 @@ export class ManagerWorkspace {
     `;
   }
 
-  // Persists a QA decision: updates the cloud row (when reachable) and
-  // keeps the local ready-cache in sync either way, so readyList.js /
-  // historyPage.js reflect the new status immediately.
+  // Persists a QA decision to the cloud row. Throws if item.id is missing
+  // or the update fails — callers must not treat that as success.
   async resolveQAItem(item, newStatus, qaNotes = null) {
+    if (!item.id) throw new Error('Cannot resolve a QA item with no cloud record id');
+
     const user = await AuthGuard.getSessionUser();
     const qaReviewedAt = new Date().toISOString();
 
-    if (item.id) {
-      await supabaseService.updateInspectionStatus(item.id, newStatus, {
-        qaNotes,
-        qaReviewedBy: user?.id || null,
-        qaReviewedAt
-      });
-    }
-
-    FormStorage.saveReadyInstallation({
-      ...item,
-      status: newStatus,
+    await supabaseService.updateInspectionStatus(item.id, newStatus, {
       qaNotes,
       qaReviewedBy: user?.id || null,
       qaReviewedAt

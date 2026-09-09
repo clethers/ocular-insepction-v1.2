@@ -8,7 +8,6 @@ import { auditLogService, AUDIT_CATEGORIES, AUDIT_SEVERITY } from '../services/a
 import { masterDataService } from '../services/masterDataService.js';
 import { supabaseService } from '../services/supabaseService.js';
 import { AppLayout } from './appLayout.js';
-import { FormStorage } from './formStorage.js';
 import { ClientDirectory } from './clientDirectory.js';
 
 export class AdminWorkspace {
@@ -59,28 +58,14 @@ export class AdminWorkspace {
       return this.cloudMetrics;
     }
 
-    let readyItems = [];
-    try {
-      readyItems = FormStorage.listReadyInstallations() || [];
-    } catch (e) {
-      readyItems = [];
-    }
-
-    const installed = readyItems.filter(i => i.status === 'INSTALLED' || i.status === 'COMMISSIONED').length;
-    const pending = readyItems.filter(i => !i.status || i.status === 'PENDING' || i.status === 'READY_FOR_INSTALLATION' || i.status === 'VERIFIED').length;
-    const cancelled = readyItems.filter(i => i.status === 'CANCELLED').length;
-
-    const total = installed + pending + cancelled;
-    const conversionRate = total > 0 ? (((installed + pending) / total) * 100).toFixed(1) + '%' : '0.0%';
-
     return {
-      installed,
-      pending,
-      cancelled,
-      conversionRate,
-      totalLeads: readyItems.length,
-      auditsCount: pending + installed,
-      handoversCount: installed
+      installed: 0,
+      pending: 0,
+      cancelled: 0,
+      conversionRate: '0.0%',
+      totalLeads: 0,
+      auditsCount: 0,
+      handoversCount: 0
     };
   }
 
