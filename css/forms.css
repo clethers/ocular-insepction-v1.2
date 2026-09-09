@@ -1663,6 +1663,12 @@
 }
 
 /* Client Directory data table */
+.directory-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-lg);
+}
+
 .directory-table {
   width: 100%;
   border-collapse: collapse;
@@ -1704,6 +1710,77 @@
 
 .directory-table tbody tr:hover {
   background: #f8fafc;
+}
+
+@media (max-width: 700px) {
+  /* A wide data table can't be shrunk to fit a phone without either
+     truncating columns or forcing horizontal scroll — instead, turn each
+     row into its own stacked label/value card. Requires a data-label
+     attribute on every <td> matching its column header. */
+  .directory-table-wrapper {
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+    background: transparent;
+    padding: 0.75rem;
+  }
+
+  .directory-table {
+    background: transparent;
+  }
+
+  .directory-table thead {
+    display: none;
+  }
+
+  .directory-table, .directory-table tbody, .directory-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .directory-table tbody tr {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--radius-lg);
+    margin-bottom: 0.85rem;
+    padding: 0.25rem 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  }
+
+  .directory-table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .directory-table tbody tr:hover {
+    background: #ffffff;
+  }
+
+  .directory-table td {
+    display: block;
+    padding: 0.6rem 0 !important;
+    border-bottom: 1px dashed #f1f5f9 !important;
+    text-align: left !important;
+    white-space: normal !important;
+  }
+
+  .directory-table tbody tr td:last-child {
+    border-bottom: none !important;
+  }
+
+  .directory-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    margin-bottom: 0.3rem;
+  }
+
+  .directory-table td:empty::before {
+    content: none;
+  }
 }
 
 .btn-link {

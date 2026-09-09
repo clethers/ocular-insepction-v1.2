@@ -220,7 +220,7 @@ export class ManagerWorkspace {
 
   renderQAListView() {
     return `
-      <div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: var(--radius-lg);">
+      <div class="directory-table-wrapper">
         <table class="directory-table">
           <thead>
             <tr>
@@ -235,12 +235,12 @@ export class ManagerWorkspace {
           <tbody>
             ${this.pendingQAItems.map(item => `
               <tr>
-                <td><span style="font-weight: 700; color: var(--ecoworks-blue);">${item.rnNo || 'N/A'}</span></td>
-                <td style="font-weight: 600; color: #0f172a;">${item.clientName || 'Commercial Client'}</td>
-                <td style="color: #64748b;">${item.locationAddress || 'Manila City'}</td>
-                <td style="color: #64748b;">${item.mainBreaker || '100A'} / ${item.voltageSystem || '230V'}</td>
-                <td style="color: #64748b;">${item.inspectedByName || 'Field Inspector'}</td>
-                <td style="text-align: right; white-space: nowrap;">
+                <td data-label="RN Number"><span style="font-weight: 700; color: var(--ecoworks-blue);">${item.rnNo || 'N/A'}</span></td>
+                <td data-label="Client Name" style="font-weight: 600; color: #0f172a;">${item.clientName || 'Commercial Client'}</td>
+                <td data-label="Location" style="color: #64748b;">${item.locationAddress || 'Manila City'}</td>
+                <td data-label="Breaker / Voltage" style="color: #64748b;">${item.mainBreaker || '100A'} / ${item.voltageSystem || '230V'}</td>
+                <td data-label="Inspector" style="color: #64748b;">${item.inspectedByName || 'Field Inspector'}</td>
+                <td data-label="Actions" style="text-align: right; white-space: nowrap;">
                   <button type="button" class="btn-link btn-qa-reject" data-rn="${item.rnNo}" style="color: #dc2626;">Request Re-inspection</button>
                   <button type="button" class="btn-link btn-qa-approve" data-rn="${item.rnNo}">Approve</button>
                 </td>

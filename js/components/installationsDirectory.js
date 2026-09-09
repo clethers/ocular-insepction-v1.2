@@ -318,7 +318,7 @@ export class InstallationsDirectory {
     };
 
     listEl.innerHTML = `
-      <div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: var(--radius-lg);">
+      <div class="directory-table-wrapper">
         <table class="directory-table">
           <thead>
             <tr>
@@ -331,14 +331,14 @@ export class InstallationsDirectory {
           <tbody>
             ${filtered.map(r => `
               <tr>
-                <td style="font-weight: 700; color: var(--ecoworks-blue);">${escapeHTML(r.installationNo || 'N/A')}</td>
-                <td style="color: #64748b;">${escapeHTML(r.rnNo || 'N/A')}</td>
-                <td style="font-weight: 600; color: #0f172a;">${escapeHTML(r.clientName || 'Unnamed Client')}</td>
-                <td style="color: #64748b;">${escapeHTML(r.scopeOfWorks || 'Installation')}</td>
-                <td style="color: #64748b;">${escapeHTML(r.installerName || 'N/A')}</td>
-                <td style="color: #64748b;">${escapeHTML(formatDate(r.createdAt))}</td>
-                <td style="color: #16a34a; font-weight: 600;">${escapeHTML(r.status || 'COMMISSIONED')}</td>
-                <td style="text-align: right; white-space: nowrap;">
+                <td data-label="Installation No." style="font-weight: 700; color: var(--ecoworks-blue);">${escapeHTML(r.installationNo || 'N/A')}</td>
+                <td data-label="RN Number" style="color: #64748b;">${escapeHTML(r.rnNo || 'N/A')}</td>
+                <td data-label="Client Name" style="font-weight: 600; color: #0f172a;">${escapeHTML(r.clientName || 'Unnamed Client')}</td>
+                <td data-label="Scope of Works" style="color: #64748b;">${escapeHTML(r.scopeOfWorks || 'Installation')}</td>
+                <td data-label="Installer" style="color: #64748b;">${escapeHTML(r.installerName || 'N/A')}</td>
+                <td data-label="Date Installed" style="color: #64748b;">${escapeHTML(formatDate(r.createdAt))}</td>
+                <td data-label="Status" style="color: #16a34a; font-weight: 600;">${escapeHTML(r.status || 'COMMISSIONED')}</td>
+                <td data-label="Actions" style="text-align: right; white-space: nowrap;">
                   <button type="button" class="btn-link btn-view-installation" data-id="${escapeHTML(String(r.id ?? ''))}">View Details</button>
                 </td>
               </tr>

@@ -115,7 +115,7 @@ export class ReadyList {
 
     return `
       <div class="form-card" style="padding: 0; overflow: hidden;">
-        <div style="overflow-x: auto;">
+        <div class="directory-table-wrapper" style="border: none; border-radius: 0;">
           <table class="directory-table">
             <thead>
               <tr>
@@ -131,13 +131,13 @@ export class ReadyList {
             <tbody>
               ${items.map(item => `
                 <tr>
-                  <td><span style="font-weight: 700; color: var(--ecoworks-blue);">${escapeHTML(item.rnNo || 'N/A')}</span></td>
-                  <td style="font-weight: 600; color: #0f172a;">${escapeHTML(item.clientName || 'Unnamed Client')}</td>
-                  <td style="color: #64748b;">${escapeHTML(item.locationAddress || 'No address on file')}</td>
-                  <td style="color: #64748b;">${escapeHTML(item.voltageSystem === '220_ll' ? '220V 1Ø L-L' : (item.voltageSystem === '220_lg' ? '220V 1Ø L-G' : '220V Standard'))} / ${escapeHTML(item.mainBreaker || '60A')}</td>
-                  <td style="color: #64748b;">${escapeHTML(item.inspectedByName || 'Field Inspector')}</td>
-                  <td style="color: #64748b;">${escapeHTML(item.dateTimeDisplay || (item.dateTime ? new Date(item.dateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent'))}</td>
-                  <td style="text-align: right; white-space: nowrap;">
+                  <td data-label="RN Number"><span style="font-weight: 700; color: var(--ecoworks-blue);">${escapeHTML(item.rnNo || 'N/A')}</span></td>
+                  <td data-label="Client Name" style="font-weight: 600; color: #0f172a;">${escapeHTML(item.clientName || 'Unnamed Client')}</td>
+                  <td data-label="Location" style="color: #64748b;">${escapeHTML(item.locationAddress || 'No address on file')}</td>
+                  <td data-label="Feeder / Breaker" style="color: #64748b;">${escapeHTML(item.voltageSystem === '220_ll' ? '220V 1Ø L-L' : (item.voltageSystem === '220_lg' ? '220V 1Ø L-G' : '220V Standard'))} / ${escapeHTML(item.mainBreaker || '60A')}</td>
+                  <td data-label="Lead Auditor" style="color: #64748b;">${escapeHTML(item.inspectedByName || 'Field Inspector')}</td>
+                  <td data-label="Audit Date" style="color: #64748b;">${escapeHTML(item.dateTimeDisplay || (item.dateTime ? new Date(item.dateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent'))}</td>
+                  <td data-label="Actions" style="text-align: right; white-space: nowrap;">
                     <button type="button" class="btn-link btn-start-install" data-rn="${item.rnNo || item.id}">Start Installation Form</button>
                   </td>
                 </tr>

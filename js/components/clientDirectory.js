@@ -491,7 +491,7 @@ export class ClientDirectory {
     };
 
     listEl.innerHTML = `
-      <div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: var(--radius-lg);">
+      <div class="directory-table-wrapper">
         <table class="directory-table">
           <thead>
             <tr>
@@ -506,12 +506,12 @@ export class ClientDirectory {
               const statusMeta = this.getStatusMeta(r.status);
               return `
                 <tr>
-                  <td><span style="font-weight: 700; color: var(--ecoworks-blue);">${escapeHTML(r.rnNo || 'N/A')}</span></td>
-                  <td style="font-weight: 600; color: #0f172a;">${escapeHTML(r.clientName || 'Unnamed Client')}</td>
-                  <td style="color: #64748b;">${escapeHTML(r.locationAddress || 'No address on file')}</td>
-                  <td style="color: ${statusMeta.color}; font-weight: 600;">${escapeHTML(statusMeta.label)}</td>
-                  <td style="color: #64748b;">${escapeHTML(r.dateTimeDisplay || 'Recent')}</td>
-                  <td style="text-align: right; white-space: nowrap;">
+                  <td data-label="RN Number"><span style="font-weight: 700; color: var(--ecoworks-blue);">${escapeHTML(r.rnNo || 'N/A')}</span></td>
+                  <td data-label="Client Name" style="font-weight: 600; color: #0f172a;">${escapeHTML(r.clientName || 'Unnamed Client')}</td>
+                  <td data-label="Location" style="color: #64748b;">${escapeHTML(r.locationAddress || 'No address on file')}</td>
+                  <td data-label="Status" style="color: ${statusMeta.color}; font-weight: 600;">${escapeHTML(statusMeta.label)}</td>
+                  <td data-label="Date Submitted" style="color: #64748b;">${escapeHTML(r.dateTimeDisplay || 'Recent')}</td>
+                  <td data-label="Actions" style="text-align: right; white-space: nowrap;">
                     <button type="button" class="btn-link btn-view-client" data-rn="${escapeHTML(r.rnNo || '')}">View Details</button>
                     <button type="button" class="btn-link btn-print-client" data-rn="${escapeHTML(r.rnNo || '')}">Print</button>
                     ${this.canDelete && this.dataSource === 'cloud' ? `
