@@ -21,7 +21,15 @@ sheet) are skipped; see build_row() below.
 
 DUPLICATE legacy_row_id PAIRS IN SOURCE DATA:
 The source spreadsheet contains 3 pairs of rows sharing the same
-legacy_row_id, which will cause silent data loss at upsert time:
+legacy_row_id. A single-statement Postgres upsert can't actually apply
+"last row wins" the way an earlier version of this docstring claimed —
+an ON CONFLICT DO UPDATE that targets the same conflict key twice in one
+command is a hard Postgres error, so the WHOLE batch would abort with
+zero rows imported, not silently drop just the duplicates. This script
+now deduplicates by legacy_row_id itself before sending anything (keeping
+the last occurrence in sheet order), so the batch no longer aborts — but
+the pairs below still need a human decision, since deduplication silently
+picks a winner rather than merging or flagging the loss:
 
   - INSTCOM_1570123: rows 126 and 260 (both "Mark Angelo Fermo")
     Likely a genuine duplicate entry.
@@ -30,19 +38,37 @@ legacy_row_id, which will cause silent data loss at upsert time:
   - INSTCOM_1562106: rows 253 and 263 (different customers: Emie Dy
     vs. Johannson Lester Lim)
     REAL DATA LOSS — one of two different customers will not be
-    imported, as only one row per legacy_row_id will survive the
-    on_conflict=legacy_row_id upsert (last row in the batch wins).
+    imported; the de-dup keeps only row 263 (the later row), Emie Dy's
+    row 253 is silently dropped.
+
+DUPLICATE rn_no PAIRS IN SOURCE DATA:
+sales_leads.rn_no is also DB-UNIQUE, but is NOT this script's upsert
+conflict target (legacy_row_id is) — so two rows sharing a non-null
+rn_no in the same batch would violate that unique constraint and abort
+the whole upsert, same failure mode as the legacy_row_id collisions
+above. Unlike legacy_row_id, this script does NOT guess a winner for
+rn_no collisions — main() pre-flight-checks for them and exits before
+calling upsert() at all, since picking one of two different real
+customers to silently drop needs a human decision, not a script default.
+Known collision in the current source data:
+
+  - RN127471968: rows 144 ("Rince Hicban", Status "Installation
+    Canceled") and 145 ("Rene Escalante", Status "Initial Customer
+    Contact") — two different real customers sharing one RN number in
+    the source sheet.
 
 RECOMMENDATION: Before running this script, either:
-  (a) Disambiguate the source spreadsheet by fixing the duplicate ids, or
+  (a) Disambiguate the source spreadsheet by fixing the duplicate ids
+      and RNs, or
   (b) Accept and explicitly document which of the colliding rows you want
-      to keep (especially critical for rows 253/263, where they are
-      different real people).
+      to keep (especially critical for rows 253/263 and 144/145, where
+      they are different real people).
 """
 import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.request
 from datetime import datetime
 
@@ -175,6 +201,21 @@ def build_row(ws, row_num):
     return payload
 
 
+def find_duplicate_rn_nos(numbered_rows):
+    """Given a list of (row_num, row_dict), returns a dict mapping each
+    non-null rn_no shared by more than one row to the list of
+    (row_num, row_dict) entries that share it. Empty dict means no
+    collisions. Pure/local — no network calls — so it's safe to call
+    from tests as well as main()."""
+    by_rn_no = {}
+    for row_num, row in numbered_rows:
+        rn_no = row.get("rn_no")
+        if not rn_no:
+            continue
+        by_rn_no.setdefault(rn_no, []).append((row_num, row))
+    return {rn_no: entries for rn_no, entries in by_rn_no.items() if len(entries) > 1}
+
+
 def upsert(url, key, rows):
     endpoint = f"{url.rstrip('/')}/rest/v1/sales_leads?on_conflict=legacy_row_id"
     body = json.dumps(rows).encode("utf-8")
@@ -183,8 +224,17 @@ def upsert(url, key, rows):
     req.add_header("Authorization", f"Bearer {key}")
     req.add_header("Content-Type", "application/json")
     req.add_header("Prefer", "resolution=merge-duplicates,return=representation")
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        # PostgREST puts the actually-useful diagnostic (which constraint
+        # failed, which column, etc.) in the response body — the default
+        # traceback from a bare HTTPError swallows that entirely.
+        error_body = e.read().decode("utf-8", errors="replace")
+        print(f"Upsert failed: HTTP {e.code} {e.reason}", file=sys.stderr)
+        print(error_body, file=sys.stderr)
+        sys.exit(1)
 
 
 def main():
@@ -192,24 +242,58 @@ def main():
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     ws = wb["CLIENT DATABASE"]
 
-    rows = []
+    numbered_rows = []  # [(row_num, row_dict), ...]
     skipped = 0
     for row_num in range(2, 308):
         row = build_row(ws, row_num)
         if row is None:
             skipped += 1
             continue
-        rows.append(row)
+        numbered_rows.append((row_num, row))
 
-    print(f"Read {len(rows)} rows ({skipped} skipped — no derivable stage).")
+    print(f"Read {len(numbered_rows)} rows ({skipped} skipped — no derivable stage).")
+
+    # De-duplicate by legacy_row_id (the upsert's actual conflict target),
+    # keeping the last occurrence in sheet order. A single-statement
+    # Postgres upsert can't do "last row wins" on its own — ON CONFLICT DO
+    # UPDATE hitting the same key twice in one command is a hard error, so
+    # without this the whole batch would abort with zero rows imported.
+    # Doing it here, before the request, makes the docstring's stated
+    # intent actually true.
+    deduped_by_legacy_id = {}
+    for row_num, row in numbered_rows:
+        deduped_by_legacy_id[row["legacy_row_id"]] = (row_num, row)
+    deduped_rows = list(deduped_by_legacy_id.values())
+    dropped = len(numbered_rows) - len(deduped_rows)
+    if dropped:
+        print(f"Deduplicated {dropped} row(s) sharing a legacy_row_id (kept the last occurrence of each).")
 
     stage_counts = {}
-    for r in rows:
+    for _, r in deduped_rows:
         stage_counts[r["stage"]] = stage_counts.get(r["stage"], 0) + 1
     for stage, count in sorted(stage_counts.items(), key=lambda x: -x[1]):
         print(f"  {stage}: {count}")
 
-    result = upsert(url, key, rows)
+    # Pre-flight: rn_no is DB-UNIQUE but is NOT the upsert's conflict
+    # target, so two rows in this batch sharing a non-null rn_no would
+    # abort the whole upsert with an opaque constraint-violation error.
+    # Check locally first and bail with a clear diagnostic instead —
+    # this is a source-data ambiguity (which row should keep the RN?)
+    # that needs a human decision, not a guess.
+    collisions = find_duplicate_rn_nos(deduped_rows)
+    if collisions:
+        print(f"\nABORTING: {len(collisions)} rn_no value(s) shared by more than one row in this batch.", file=sys.stderr)
+        print("rn_no is UNIQUE in sales_leads but is not this script's upsert conflict target", file=sys.stderr)
+        print("(legacy_row_id is), so any such collision would abort the entire batch insert.", file=sys.stderr)
+        print("Resolve this in the source spreadsheet (or decide which row keeps the RN) before re-running:\n", file=sys.stderr)
+        for rn_no, entries in collisions.items():
+            print(f"  {rn_no}:", file=sys.stderr)
+            for row_num, row in entries:
+                name = f"{row.get('first_name') or ''} {row.get('last_name') or ''}".strip()
+                print(f"    - row {row_num}: {name or '(no name)'} (legacy_row_id={row['legacy_row_id']})", file=sys.stderr)
+        sys.exit(1)
+
+    result = upsert(url, key, [row for _, row in deduped_rows])
     print(f"Upserted {len(result)} rows into sales_leads.")
 
 

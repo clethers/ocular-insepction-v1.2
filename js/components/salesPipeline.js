@@ -35,6 +35,8 @@ export class SalesPipeline {
     this.searchQuery = '';
     this.stageFilter = 'ALL';
     this.pendingImportRows = [];
+    this.sortKey = 'updatedAt';
+    this.sortDir = 'desc';
   }
 
   async render() {
@@ -177,11 +179,21 @@ export class SalesPipeline {
   }
 
   getFilteredLeads() {
-    return this.leads.filter(l => {
+    const filtered = this.leads.filter(l => {
       if (this.stageFilter !== 'ALL' && l.stage !== this.stageFilter) return false;
       if (!this.searchQuery) return true;
       const haystack = `${l.clientName} ${l.rnNo || ''} ${l.contactNo || ''}`.toLowerCase();
       return haystack.includes(this.searchQuery);
+    });
+
+    const key = this.sortKey;
+    const dir = this.sortDir === 'asc' ? 1 : -1;
+    return filtered.sort((a, b) => {
+      const av = (a[key] || '').toString().toLowerCase();
+      const bv = (b[key] || '').toString().toLowerCase();
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
     });
   }
 
@@ -240,16 +252,29 @@ export class SalesPipeline {
       return `<span style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; font-weight: 700; padding: 0.3rem 0.6rem; border-radius: var(--radius-full); background: ${m.color}22; color: ${m.color};"><span style="width: 7px; height: 7px; border-radius: 50%; background: ${m.color};"></span>${escapeHTML(m.label)}</span>`;
     };
 
+    const columns = [
+      { key: 'rnNo', label: 'RN Number' },
+      { key: 'clientName', label: 'Client Name' },
+      { key: 'stage', label: 'Stage' },
+      { key: 'contactNo', label: 'Contact No' },
+      { key: 'updatedAt', label: 'Last Updated' }
+    ];
+
+    const sortArrow = (key) => {
+      if (this.sortKey !== key) return '';
+      return this.sortDir === 'asc'
+        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="margin-left: 0.25rem; vertical-align: -1px;"><path d="M12 5l7 8H5z"/></svg>`
+        : `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="margin-left: 0.25rem; vertical-align: -1px;"><path d="M12 19l-7-8h14z"/></svg>`;
+    };
+
     listEl.innerHTML = `
       <div class="directory-table-wrapper hide-on-mobile">
         <table class="directory-table">
           <thead>
             <tr>
-              <th>RN Number</th>
-              <th>Client Name</th>
-              <th>Stage</th>
-              <th>Contact No</th>
-              <th>Last Updated</th>
+              ${columns.map(col => `
+                <th class="directory-table-sortable" data-sort-key="${col.key}">${escapeHTML(col.label)}${sortArrow(col.key)}</th>
+              `).join('')}
               <th style="text-align: right;">Actions</th>
             </tr>
           </thead>
@@ -288,6 +313,19 @@ export class SalesPipeline {
         `).join('')}
       </div>
     `;
+
+    listEl.querySelectorAll('.directory-table-sortable').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.getAttribute('data-sort-key');
+        if (this.sortKey === key) {
+          this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          this.sortKey = key;
+          this.sortDir = 'asc';
+        }
+        this.renderList();
+      });
+    });
 
     listEl.querySelectorAll('.btn-view-lead').forEach(btn => {
       btn.addEventListener('click', () => this.openDetail(btn.getAttribute('data-id')));
@@ -450,9 +488,22 @@ export class SalesPipeline {
     const progressStages = STAGES.filter(s => s.key !== 'CANCELED');
     const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 
+    // A step is "reached" if it's at or before the lead's current stage
+    // (by pipeline position), OR its own timestamp is set — covers leads
+    // imported/created without stage_*_at timestamps (historical import,
+    // CSV import) whose `stage` alone should still light up the stepper,
+    // while still honoring a timestamp on a stage past the current one.
+    // lead.stage === 'CANCELED' isn't itself a progress stage (it's
+    // filtered out of progressStages above), so for a canceled lead fall
+    // back to the furthest stage that actually has a timestamp — this is
+    // what preserves "how far did this get before it fell through" for
+    // canceled leads instead of collapsing the whole stepper to unreached.
+    const stageIdx = progressStages.findIndex(s => s.key === lead.stage);
+    const stampedIdx = progressStages.reduce((max, s, i) => (lead[stampField[s.key]] ? i : max), -1);
+    const currentIdx = stageIdx !== -1 ? stageIdx : stampedIdx;
     const stepperHtml = progressStages.map((s, i) => {
-      const reached = !!lead[stampField[s.key]];
-      const prevReached = i > 0 && !!lead[stampField[progressStages[i - 1].key]];
+      const reached = i <= currentIdx || !!lead[stampField[s.key]];
+      const prevReached = i > 0 && (i - 1 <= currentIdx || !!lead[stampField[progressStages[i - 1].key]]);
       return `
         ${i > 0 ? `<div class="pipeline-connector ${prevReached ? 'active' : ''}"></div>` : ''}
         <div class="pipeline-step ${reached ? 'completed' : ''}">
@@ -645,26 +696,44 @@ export class SalesPipeline {
 
     const get = (cols, i) => (i !== -1 && cols[i] !== undefined) ? cols[i].trim() : '';
     const stageKeys = new Set(STAGES.map(s => s.key));
+    // Tracks rn_no values already claimed by an earlier valid row in this
+    // same file — a second row reusing one would hit the same
+    // rn_no-is-not-the-upsert-conflict-target collision as the historical
+    // importer's legacy_row_id/rn_no issue, so flag it as an error row
+    // here instead of letting the whole batch upsert fail.
+    const seenRnNos = new Set();
 
     this.pendingImportRows = rows.slice(1).map((cols, i) => {
       const firstName = get(cols, idx.firstName);
       const lastName = get(cols, idx.lastName);
       const stageRaw = get(cols, idx.stage).toUpperCase().replace(/\s+/g, '_');
+      const rnNo = get(cols, idx.rnNo);
       const errors = [];
       if (!firstName) errors.push('Missing First Name');
       if (!lastName) errors.push('Missing Last Name');
       if (stageRaw && !stageKeys.has(stageRaw)) errors.push(`Unrecognized stage "${get(cols, idx.stage)}"`);
+      if (rnNo && seenRnNos.has(rnNo)) errors.push(`Duplicate RN Number "${rnNo}" (already used earlier in this file)`);
+
+      if (rnNo && errors.length === 0) seenRnNos.add(rnNo);
 
       return {
         rowNum: i + 2,
         firstName,
         lastName,
-        rnNo: get(cols, idx.rnNo),
+        rnNo,
         contactNo: get(cols, idx.contactNo),
         email: get(cols, idx.email),
         installationAddress: get(cols, idx.installationAddress),
         modeOfCommunication: get(cols, idx.modeOfCommunication),
-        stage: stageKeys.has(stageRaw) ? stageRaw : 'INITIAL_CONTACT',
+        // '' (not a literal 'INITIAL_CONTACT' fallback) when the CSV has no
+        // Stage column, or a blank cell — bulkImportSalesLeads only sends a
+        // stage key when this is truthy, so a re-import with no Stage data
+        // for a row doesn't reset that lead's real progress back to
+        // Initial Contact (see supabaseService.js). The import preview
+        // table below still displays "Initial Contact" for an empty stage
+        // via stageMeta()'s own fallback, so this doesn't change what's
+        // shown to the importer.
+        stage: stageKeys.has(stageRaw) ? stageRaw : '',
         remarks: get(cols, idx.remarks),
         errors
       };

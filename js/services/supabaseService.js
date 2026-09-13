@@ -805,21 +805,34 @@ class SupabaseService {
   // overlapping RNs updates rather than errors; multiple rows with a
   // null rn_no never conflict with each other (Postgres treats each NULL
   // as distinct for uniqueness).
+  //
+  // Only includes a field in a row's payload when the source CSV actually
+  // had a value for it. rn_no is the upsert's conflict target, so a CSV
+  // re-import that's missing a column (or has a blank cell) for an
+  // existing lead must NOT clobber that lead's real data with a fallback
+  // default — first_name/last_name are the exception: the CSV importer's
+  // own validation (see handleImportFile) already guarantees every row
+  // reaching here has both, so they're always included.
   async bulkImportSalesLeads(rows) {
     if (!this.isConfigured()) throw new Error('Cloud not configured');
     if (!rows || rows.length === 0) return [];
 
-    const payload = rows.map(r => ({
-      first_name: r.firstName,
-      last_name: r.lastName,
-      contact_no: r.contactNo || null,
-      email: r.email || null,
-      installation_address: r.installationAddress || null,
-      mode_of_communication: r.modeOfCommunication || null,
-      rn_no: r.rnNo || null,
-      stage: r.stage || 'INITIAL_CONTACT',
-      remarks: r.remarks || null
-    }));
+    const now = new Date().toISOString();
+    const payload = rows.map(r => {
+      const row = {
+        first_name: r.firstName,
+        last_name: r.lastName,
+        updated_at: now
+      };
+      if (r.contactNo) row.contact_no = r.contactNo;
+      if (r.email) row.email = r.email;
+      if (r.installationAddress) row.installation_address = r.installationAddress;
+      if (r.modeOfCommunication) row.mode_of_communication = r.modeOfCommunication;
+      if (r.rnNo) row.rn_no = r.rnNo;
+      if (r.stage) row.stage = r.stage;
+      if (r.remarks) row.remarks = r.remarks;
+      return row;
+    });
 
     const { data, error } = await this.client
       .from('sales_leads')
