@@ -167,8 +167,13 @@ submission date inline.
 
 ## One-time historical import
 
-A standalone script, `scripts/import-sales-leads.mjs`, run manually once
-(not part of the app or CI):
+A standalone script, `scripts/import_sales_leads.py`, run manually once
+(not part of the app or CI, not a project dependency — this repo has no
+Python tooling otherwise, so it stays a throwaway dev-time script rather
+than adding an npm package to `package.json` just to parse one spreadsheet
+once). Uses `openpyxl` (read the sheet) and the standard library's
+`urllib.request` (call Supabase's PostgREST API directly) — no new
+project dependencies either way.
 
 1. Reads `srcs/TESLA INTERNAL DATABASE (1) 1.xlsx`, sheet "CLIENT DATABASE",
    rows 2–307 (the sheet has ~680 rows of blank padding after that).
@@ -176,8 +181,15 @@ A standalone script, `scripts/import-sales-leads.mjs`, run manually once
    `source_status_raw`.
 3. Splits `Status` into the per-stage `stage_*_at` timestamps using the
    sheet's own "DATE ACCOMPLISHED"/"DATE SCHEDULED" columns where present.
-4. Upserts into `sales_leads` via the Supabase JS client (service-role key
-   from `.env`, never committed), keyed on `legacy_row_id` — safe to re-run.
+4. Upserts into `sales_leads` via a `POST` to
+   `{VITE_SUPABASE_URL}/rest/v1/sales_leads` with
+   `Prefer: resolution=merge-duplicates` and `on_conflict=legacy_row_id` —
+   authenticated with the same `VITE_SUPABASE_URL` /
+   `VITE_SUPABASE_ANON_KEY` already in `.env` (this project has no
+   service-role key configured anywhere, and doesn't need one: every RLS
+   policy on `sales_leads`, like every other OIMS table, is
+   `USING (true)` / `WITH CHECK (true)` — access control is enforced in
+   the app layer, not RLS). Keyed on `legacy_row_id` — safe to re-run.
 5. Prints a summary (rows read, inserted, updated, skipped-with-reason) for
    manual verification against the known counts (306 total, 104 Installation
    Complete, 97 Initial Contact, 51 Canceled — see prior status breakdown).
@@ -236,8 +248,15 @@ Mirrors `ClientDirectory`'s established structure:
   row-level import error (same pattern as `ClientDirectory.handleImportFile`
   flagging rows and letting valid rows still import) — the closed-dropdown
   guarantee holds for CSV-imported rows too, not just ones entered by hand.
-- Archive (soft-delete) action, Admin-gated, following the same
-  `deleted_at` convention as `ClientDirectory.handleDelete`.
+- Archive (soft-delete) action, available to anyone who can reach the Manager
+  Workspace (the `/manager` route is already gated to Customer Care Manager /
+  Lead Engineer / Admin — same access level as resolving a Support Ticket or
+  approving Audit QA there today, no extra per-action role check). Uses the
+  same `deleted_at` convention as `ClientDirectory.handleDelete`, which *is*
+  Admin-only — that stricter gate exists there because Client Directory is
+  also reachable from the Admin Workspace's own Clients tab and needs to
+  distinguish the two hosts; Sales Pipeline has only the one host, so no
+  extra flag is needed.
 
 ### Service layer
 
@@ -245,9 +264,10 @@ New methods on `js/services/supabaseService.js`, following the existing
 method shapes (`fetchAllInspections`, `bulkImportInspections`, etc.):
 
 - `fetchAllSalesLeads()`
-- `fetchSalesLeadByRnNo(rnNo)` — used by the detail view for the 360 lookup,
-  and reusable later from `ClientDirectory` if that view wants the reverse
-  link.
+- `fetchOcularInspectionByRnNo(rnNo)` — given a lead's RN number, looks up
+  the matching `ocular_inspections` row for the detail view's 360 panel.
+  Read-only cross-reference; same convention as the existing
+  `fetchInstallationByRnNo`.
 - `createSalesLead(data)`
 - `updateSalesLeadStage(id, stage)`
 - `bulkImportSalesLeads(rows)`
