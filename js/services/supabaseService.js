@@ -641,6 +641,208 @@ class SupabaseService {
     };
   }
 
+  // Sales Pipeline — Customer Care's lead-tracking table (see
+  // supabase/migrations/2026-09-13-sales-leads.sql). Independent of
+  // ocular_inspections; linked only by matching rn_no, looked up on
+  // demand via fetchOcularInspectionByRnNo below.
+  async fetchAllSalesLeads() {
+    if (!this.isConfigured()) return [];
+    try {
+      const { data, error } = await this.withTimeout(
+        this.client
+          .from('sales_leads')
+          .select('*')
+          .is('deleted_at', null)
+          .order('updated_at', { ascending: false }),
+        3000,
+        'Fetch all sales leads'
+      );
+      if (error) throw error;
+      return (data || []).map(row => this.mapSalesLeadToLocal(row));
+    } catch (err) {
+      console.warn('[OIMS Supabase] Could not fetch sales leads:', err.message);
+      return [];
+    }
+  }
+
+  // Given a sales lead's RN number, looks up the matching
+  // ocular_inspections row (if an actual inspection has since been
+  // submitted for it) — used by the Sales Pipeline detail view's 360
+  // panel. Read-only cross-reference; same convention as the existing
+  // fetchInstallationByRnNo.
+  async fetchOcularInspectionByRnNo(rnNo) {
+    if (!rnNo || !this.isConfigured()) return null;
+    try {
+      const { data, error } = await this.withTimeout(
+        this.client
+          .from('ocular_inspections')
+          .select('status, created_at')
+          .eq('rn_no', rnNo)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1),
+        3000,
+        'Fetch ocular inspection by rn_no'
+      );
+      if (error) throw error;
+      return (data && data[0]) || null;
+    } catch (err) {
+      console.warn('[OIMS Supabase] Could not fetch linked ocular inspection:', err.message);
+      return null;
+    }
+  }
+
+  mapSalesLeadToLocal(row) {
+    const firstName = row.first_name || '';
+    const lastName = row.last_name || '';
+    return {
+      id: row.id,
+      legacyRowId: row.legacy_row_id,
+      firstName,
+      lastName,
+      clientName: `${firstName} ${lastName}`.trim() || 'Unnamed Lead',
+      contactNo: row.contact_no,
+      email: row.email,
+      installationAddress: row.installation_address,
+      modeOfCommunication: row.mode_of_communication,
+      rnNo: row.rn_no,
+      stage: row.stage,
+      stageInitialContactAt: row.stage_initial_contact_at,
+      stageSiteVisitScheduledAt: row.stage_site_visit_scheduled_at,
+      stageSiteVisitCompletedAt: row.stage_site_visit_completed_at,
+      stageQuoteSentAt: row.stage_quote_sent_at,
+      stageQuoteAcceptedAt: row.stage_quote_accepted_at,
+      stageInstallationScheduledAt: row.stage_installation_scheduled_at,
+      stageInstallationCompleteAt: row.stage_installation_complete_at,
+      stageJobCheckoutCompleteAt: row.stage_job_checkout_complete_at,
+      remarks: row.remarks,
+      sourceStatusRaw: row.source_status_raw,
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
+  // Maps a sales_leads.stage value to the DB column that gets stamped
+  // the first time a lead reaches it. CANCELED has no column of its own
+  // — see updateSalesLeadStage.
+  static SALES_STAGE_COLUMNS = {
+    INITIAL_CONTACT: 'stage_initial_contact_at',
+    SITE_VISIT_SCHEDULED: 'stage_site_visit_scheduled_at',
+    SITE_VISIT_COMPLETED: 'stage_site_visit_completed_at',
+    QUOTE_SENT: 'stage_quote_sent_at',
+    QUOTE_ACCEPTED: 'stage_quote_accepted_at',
+    INSTALLATION_SCHEDULED: 'stage_installation_scheduled_at',
+    INSTALLATION_COMPLETE: 'stage_installation_complete_at',
+    JOB_CHECKOUT_COMPLETE: 'stage_job_checkout_complete_at'
+  };
+
+  async createSalesLead({ firstName, lastName, contactNo, email, installationAddress, modeOfCommunication, createdBy }) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    const now = new Date().toISOString();
+    const payload = {
+      first_name: firstName,
+      last_name: lastName,
+      contact_no: contactNo || null,
+      email: email || null,
+      installation_address: installationAddress || null,
+      mode_of_communication: modeOfCommunication || null,
+      stage: 'INITIAL_CONTACT',
+      stage_initial_contact_at: now,
+      created_by: createdBy || null
+    };
+
+    const { data, error } = await this.client
+      .from('sales_leads')
+      .insert([payload])
+      .select();
+
+    if (error) throw error;
+    return (data && data[0]) ? this.mapSalesLeadToLocal(data[0]) : this.mapSalesLeadToLocal(payload);
+  }
+
+  // Advances (or cancels) a lead. Stamps the matching stage_*_at column
+  // only the first time that stage is reached — moving a lead back and
+  // forth, or re-selecting its current stage, never overwrites a
+  // timestamp already recorded.
+  async updateSalesLeadStage(id, stage) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    const now = new Date().toISOString();
+    const payload = { stage, updated_at: now };
+    const column = SupabaseService.SALES_STAGE_COLUMNS[stage];
+
+    if (column) {
+      const { data: existing, error: fetchError } = await this.withTimeout(
+        this.client.from('sales_leads').select(column).eq('id', id).single(),
+        3000,
+        'Fetch sales lead stage timestamp'
+      );
+      if (fetchError) throw fetchError;
+      if (!existing || !existing[column]) payload[column] = now;
+    }
+
+    const { error } = await this.withTimeout(
+      this.client.from('sales_leads').update(payload).eq('id', id),
+      3000,
+      'Update sales lead stage'
+    );
+    if (error) throw error;
+  }
+
+  async archiveSalesLead(id) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    const { error } = await this.withTimeout(
+      this.client.from('sales_leads').update({ deleted_at: new Date().toISOString() }).eq('id', id),
+      3000,
+      'Archive sales lead'
+    );
+    if (error) throw error;
+  }
+
+  // Bulk-creates sales leads from a parsed CSV (Sales Pipeline's Import
+  // CSV button — future bulk adds, distinct from the one-time historical
+  // xlsx migration). Upserts on rn_no so re-running an import with
+  // overlapping RNs updates rather than errors; multiple rows with a
+  // null rn_no never conflict with each other (Postgres treats each NULL
+  // as distinct for uniqueness).
+  //
+  // Only includes a field in a row's payload when the source CSV actually
+  // had a value for it. rn_no is the upsert's conflict target, so a CSV
+  // re-import that's missing a column (or has a blank cell) for an
+  // existing lead must NOT clobber that lead's real data with a fallback
+  // default — first_name/last_name are the exception: the CSV importer's
+  // own validation (see handleImportFile) already guarantees every row
+  // reaching here has both, so they're always included.
+  async bulkImportSalesLeads(rows) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    if (!rows || rows.length === 0) return [];
+
+    const now = new Date().toISOString();
+    const payload = rows.map(r => {
+      const row = {
+        first_name: r.firstName,
+        last_name: r.lastName,
+        updated_at: now
+      };
+      if (r.contactNo) row.contact_no = r.contactNo;
+      if (r.email) row.email = r.email;
+      if (r.installationAddress) row.installation_address = r.installationAddress;
+      if (r.modeOfCommunication) row.mode_of_communication = r.modeOfCommunication;
+      if (r.rnNo) row.rn_no = r.rnNo;
+      if (r.stage) row.stage = r.stage;
+      if (r.remarks) row.remarks = r.remarks;
+      return row;
+    });
+
+    const { data, error } = await this.client
+      .from('sales_leads')
+      .upsert(payload, { onConflict: 'rn_no' })
+      .select();
+
+    if (error) throw error;
+    return (data || []).map(row => this.mapSalesLeadToLocal(row));
+  }
+
   subscribeToReadyQueue(callback) {
     if (this.isConfigured()) {
       try {

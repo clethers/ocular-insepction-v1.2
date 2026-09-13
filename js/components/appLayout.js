@@ -90,6 +90,11 @@ export class AppLayout {
                 <span>Audit QA Queue</span>
               </a>
 
+              <a href="/manager/pipeline" class="sidebar-nav-btn ${isActive('/manager/pipeline') ? 'active' : ''}" title="Sales Pipeline">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                <span>Sales Pipeline</span>
+              </a>
+
               <a href="/manager/clientsearch" class="sidebar-nav-btn ${isActive('/manager/clientsearch') ? 'active' : ''}" title="360 Client Lookup">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <span>360° Client Lookup</span>

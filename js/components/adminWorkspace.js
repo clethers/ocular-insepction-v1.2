@@ -9,6 +9,7 @@ import { masterDataService } from '../services/masterDataService.js';
 import { supabaseService } from '../services/supabaseService.js';
 import { AppLayout } from './appLayout.js';
 import { ClientDirectory } from './clientDirectory.js';
+import { escapeHTML } from '../utils/security.js';
 
 export class AdminWorkspace {
   constructor(container) {
@@ -278,7 +279,7 @@ export class AdminWorkspace {
                     </span>
                   </td>
                   <td style="padding: 0.75rem; font-family: monospace; color: var(--text-muted);">${l.resourceId || 'N/A'}</td>
-                  <td style="padding: 0.75rem; color: var(--text-secondary); max-width: 320px;">${l.description}</td>
+                  <td style="padding: 0.75rem; color: var(--text-secondary); max-width: 320px;">${escapeHTML(l.description)}</td>
                 </tr>
               `).join('')}
             </tbody>
