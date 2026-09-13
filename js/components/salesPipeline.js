@@ -357,7 +357,7 @@ export class SalesPipeline {
       });
       this.leads.unshift(lead);
       this.closeAddLeadOverlay();
-      AppLayout.showToast(`Lead added: ${lead.clientName}`);
+      AppLayout.showToast(`Lead added: ${escapeHTML(lead.clientName)}`);
       this.renderList();
     } catch (e) {
       console.warn('[OIMS] Could not create sales lead:', e);
@@ -521,7 +521,7 @@ export class SalesPipeline {
       });
       this.leads = this.leads.filter(l => l.id !== lead.id);
       this.closeDetail();
-      AppLayout.showToast(`Archived "${lead.clientName}".`);
+      AppLayout.showToast(`Archived "${escapeHTML(lead.clientName)}".`);
       this.renderList();
     } catch (e) {
       console.warn('[OIMS] Could not archive sales lead:', e);
