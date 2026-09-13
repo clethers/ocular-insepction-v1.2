@@ -46,16 +46,23 @@ sales_leads.rn_no is also DB-UNIQUE, but is NOT this script's upsert
 conflict target (legacy_row_id is) — so two rows sharing a non-null
 rn_no in the same batch would violate that unique constraint and abort
 the whole upsert, same failure mode as the legacy_row_id collisions
-above. Unlike legacy_row_id, this script does NOT guess a winner for
-rn_no collisions — main() pre-flight-checks for them and exits before
-calling upsert() at all, since picking one of two different real
+above. Unlike legacy_row_id, this script does NOT guess a winner for an
+rn_no collision on its own — main() pre-flight-checks for one and exits
+before calling upsert() at all, since picking one of two different real
 customers to silently drop needs a human decision, not a script default.
-Known collision in the current source data:
+
+RESOLVED collision in the current source data:
 
   - RN127471968: rows 144 ("Rince Hicban", Status "Installation
     Canceled") and 145 ("Rene Escalante", Status "Initial Customer
     Contact") — two different real customers sharing one RN number in
-    the source sheet.
+    the source sheet, almost certainly a copy-paste mistake rather than
+    a legitimate shared reservation. Human decision (confirmed): row
+    144 (Hicban, already canceled) keeps its legacy id and imports
+    normally but with rn_no cleared — see ROWS_WITH_RN_CLEARED below —
+    since row 145 (Escalante, an active ongoing lead) is the one that
+    actually needs RN127471968 going forward. Hicban's imported record
+    carries a remarks note explaining the RN was removed and why.
 
 RECOMMENDATION: Before running this script, either:
   (a) Disambiguate the source spreadsheet by fixing the duplicate ids
@@ -77,6 +84,22 @@ import openpyxl
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 XLSX_PATH = os.path.join(REPO_ROOT, "srcs", "TESLA INTERNAL DATABASE (1) 1.xlsx")
 ENV_PATH = os.path.join(REPO_ROOT, ".env")
+
+# Row 144 (Rince Hicban, INSTCOM_1562984) shares rn_no RN127471968 with
+# row 145 (Rene Escalante, INSTCOM_1562975) — a copy-paste mistake in the
+# source sheet, not two people who legitimately share a reservation
+# number. Human decision (confirmed): since Hicban's deal is already
+# "Installation Canceled", his row keeps its legacy id and imports
+# normally, just without the RN — Escalante (an active, ongoing lead)
+# keeps RN127471968. Both imported records get a remarks note about it,
+# not just the one that lost the RN.
+#
+# row_num -> (rn_no in question, whether this row keeps it, the other row's
+# name, for a readable note on both sides of the pair).
+RN_DUPLICATE_RESOLUTIONS = {
+    144: ("RN127471968", False, "Rene Escalante (row 145)"),
+    145: ("RN127471968", True, "Rince Hicban (row 144)"),
+}
 
 # Positional column map (1-indexed, matches the sheet's fixed layout).
 COL_LEGACY_ID = 1
@@ -184,19 +207,51 @@ def build_row(ws, row_num):
     # stable (hence safely re-runnable) across repeated runs.
     legacy_id = clean_str(ws.cell(row=row_num, column=COL_LEGACY_ID).value) or f"ROW_{row_num}"
 
+    original_rn_no = clean_str(ws.cell(row=row_num, column=COL_RN_NO).value)
+    resolution = RN_DUPLICATE_RESOLUTIONS.get(row_num)
+    rn_no = original_rn_no
+    remarks = clean_str(ws.cell(row=row_num, column=COL_REMARKS).value)
+
+    if resolution:
+        rn_value, keeps_rn, other_name = resolution
+        if keeps_rn:
+            rn_no = rn_value
+            note = (
+                f"[Import note: RN {rn_value} was also entered in the source "
+                f"spreadsheet for {other_name}'s record — a duplicate. This RN was "
+                f"kept here since this is the active lead; it was removed from "
+                f"{other_name}'s record.]"
+            )
+        else:
+            rn_no = None
+            note = (
+                f"[Import note: RN {rn_value} removed from this record — it was "
+                f"duplicated with {other_name}'s record in the source spreadsheet, "
+                f"and kept on that record instead.]"
+            )
+        remarks = f"{remarks}\n{note}" if remarks else note
+
     payload = {
         "legacy_row_id": legacy_id,
-        "rn_no": clean_str(ws.cell(row=row_num, column=COL_RN_NO).value),
+        "rn_no": rn_no,
         "first_name": clean_str(ws.cell(row=row_num, column=COL_FIRST_NAME).value),
         "last_name": clean_str(ws.cell(row=row_num, column=COL_LAST_NAME).value),
         "contact_no": clean_str(ws.cell(row=row_num, column=COL_CONTACT_NO).value),
         "installation_address": clean_str(ws.cell(row=row_num, column=COL_ADDRESS).value),
         "email": clean_str(ws.cell(row=row_num, column=COL_EMAIL).value),
         "mode_of_communication": clean_str(ws.cell(row=row_num, column=COL_MODE).value),
-        "remarks": clean_str(ws.cell(row=row_num, column=COL_REMARKS).value),
+        "remarks": remarks,
         "stage": stage,
         "source_status_raw": clean_str(status_raw),
     }
+    # PostgREST's bulk insert requires every row in the batch to carry the
+    # identical set of JSON keys (a mismatch is PGRST102 "All object keys
+    # must match") — so every stage_*_at column must be present on every
+    # row, explicitly None where that stage was never reached, not just
+    # omitted. `stamps` only ever contains the columns THIS row's
+    # checkboxes set, so seed every column here first, then overlay it.
+    for _checkbox_col, _date_col, _stage_key, db_col in STAGE_PAIRS:
+        payload[db_col] = None
     payload.update(stamps)
     return payload
 
