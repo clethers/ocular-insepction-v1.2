@@ -723,6 +723,113 @@ class SupabaseService {
     };
   }
 
+  // Maps a sales_leads.stage value to the DB column that gets stamped
+  // the first time a lead reaches it. CANCELED has no column of its own
+  // — see updateSalesLeadStage.
+  static SALES_STAGE_COLUMNS = {
+    INITIAL_CONTACT: 'stage_initial_contact_at',
+    SITE_VISIT_SCHEDULED: 'stage_site_visit_scheduled_at',
+    SITE_VISIT_COMPLETED: 'stage_site_visit_completed_at',
+    QUOTE_SENT: 'stage_quote_sent_at',
+    QUOTE_ACCEPTED: 'stage_quote_accepted_at',
+    INSTALLATION_SCHEDULED: 'stage_installation_scheduled_at',
+    INSTALLATION_COMPLETE: 'stage_installation_complete_at',
+    JOB_CHECKOUT_COMPLETE: 'stage_job_checkout_complete_at'
+  };
+
+  async createSalesLead({ firstName, lastName, contactNo, email, installationAddress, modeOfCommunication, createdBy }) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    const now = new Date().toISOString();
+    const payload = {
+      first_name: firstName,
+      last_name: lastName,
+      contact_no: contactNo || null,
+      email: email || null,
+      installation_address: installationAddress || null,
+      mode_of_communication: modeOfCommunication || null,
+      stage: 'INITIAL_CONTACT',
+      stage_initial_contact_at: now,
+      created_by: createdBy || null
+    };
+
+    const { data, error } = await this.client
+      .from('sales_leads')
+      .insert([payload])
+      .select();
+
+    if (error) throw error;
+    return (data && data[0]) ? this.mapSalesLeadToLocal(data[0]) : this.mapSalesLeadToLocal(payload);
+  }
+
+  // Advances (or cancels) a lead. Stamps the matching stage_*_at column
+  // only the first time that stage is reached — moving a lead back and
+  // forth, or re-selecting its current stage, never overwrites a
+  // timestamp already recorded.
+  async updateSalesLeadStage(id, stage) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    const now = new Date().toISOString();
+    const payload = { stage, updated_at: now };
+    const column = SupabaseService.SALES_STAGE_COLUMNS[stage];
+
+    if (column) {
+      const { data: existing, error: fetchError } = await this.withTimeout(
+        this.client.from('sales_leads').select(column).eq('id', id).single(),
+        3000,
+        'Fetch sales lead stage timestamp'
+      );
+      if (fetchError) throw fetchError;
+      if (!existing || !existing[column]) payload[column] = now;
+    }
+
+    const { error } = await this.withTimeout(
+      this.client.from('sales_leads').update(payload).eq('id', id),
+      3000,
+      'Update sales lead stage'
+    );
+    if (error) throw error;
+  }
+
+  async archiveSalesLead(id) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    const { error } = await this.withTimeout(
+      this.client.from('sales_leads').update({ deleted_at: new Date().toISOString() }).eq('id', id),
+      3000,
+      'Archive sales lead'
+    );
+    if (error) throw error;
+  }
+
+  // Bulk-creates sales leads from a parsed CSV (Sales Pipeline's Import
+  // CSV button — future bulk adds, distinct from the one-time historical
+  // xlsx migration). Upserts on rn_no so re-running an import with
+  // overlapping RNs updates rather than errors; multiple rows with a
+  // null rn_no never conflict with each other (Postgres treats each NULL
+  // as distinct for uniqueness).
+  async bulkImportSalesLeads(rows) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    if (!rows || rows.length === 0) return [];
+
+    const payload = rows.map(r => ({
+      first_name: r.firstName,
+      last_name: r.lastName,
+      contact_no: r.contactNo || null,
+      email: r.email || null,
+      installation_address: r.installationAddress || null,
+      mode_of_communication: r.modeOfCommunication || null,
+      rn_no: r.rnNo || null,
+      stage: r.stage || 'INITIAL_CONTACT',
+      remarks: r.remarks || null
+    }));
+
+    const { data, error } = await this.client
+      .from('sales_leads')
+      .upsert(payload, { onConflict: 'rn_no' })
+      .select();
+
+    if (error) throw error;
+    return (data || []).map(row => this.mapSalesLeadToLocal(row));
+  }
+
   subscribeToReadyQueue(callback) {
     if (this.isConfigured()) {
       try {
