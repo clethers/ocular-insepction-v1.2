@@ -216,6 +216,7 @@ export class Router {
     const titleMap = {
       dispatch: 'Workload & Field Dispatch Command Center',
       qa: 'Audit QA Review Queue',
+      pipeline: 'Sales Pipeline',
       clientsearch: '360° Client & Account Lookup',
       installations: 'Installations',
       calendar: 'Field Operations Calendar',
