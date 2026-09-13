@@ -641,6 +641,88 @@ class SupabaseService {
     };
   }
 
+  // Sales Pipeline — Customer Care's lead-tracking table (see
+  // supabase/migrations/2026-09-13-sales-leads.sql). Independent of
+  // ocular_inspections; linked only by matching rn_no, looked up on
+  // demand via fetchOcularInspectionByRnNo below.
+  async fetchAllSalesLeads() {
+    if (!this.isConfigured()) return [];
+    try {
+      const { data, error } = await this.withTimeout(
+        this.client
+          .from('sales_leads')
+          .select('*')
+          .is('deleted_at', null)
+          .order('updated_at', { ascending: false }),
+        3000,
+        'Fetch all sales leads'
+      );
+      if (error) throw error;
+      return (data || []).map(row => this.mapSalesLeadToLocal(row));
+    } catch (err) {
+      console.warn('[OIMS Supabase] Could not fetch sales leads:', err.message);
+      return [];
+    }
+  }
+
+  // Given a sales lead's RN number, looks up the matching
+  // ocular_inspections row (if an actual inspection has since been
+  // submitted for it) — used by the Sales Pipeline detail view's 360
+  // panel. Read-only cross-reference; same convention as the existing
+  // fetchInstallationByRnNo.
+  async fetchOcularInspectionByRnNo(rnNo) {
+    if (!rnNo || !this.isConfigured()) return null;
+    try {
+      const { data, error } = await this.withTimeout(
+        this.client
+          .from('ocular_inspections')
+          .select('status, created_at')
+          .eq('rn_no', rnNo)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(1),
+        3000,
+        'Fetch ocular inspection by rn_no'
+      );
+      if (error) throw error;
+      return (data && data[0]) || null;
+    } catch (err) {
+      console.warn('[OIMS Supabase] Could not fetch linked ocular inspection:', err.message);
+      return null;
+    }
+  }
+
+  mapSalesLeadToLocal(row) {
+    const firstName = row.first_name || '';
+    const lastName = row.last_name || '';
+    return {
+      id: row.id,
+      legacyRowId: row.legacy_row_id,
+      firstName,
+      lastName,
+      clientName: `${firstName} ${lastName}`.trim() || 'Unnamed Lead',
+      contactNo: row.contact_no,
+      email: row.email,
+      installationAddress: row.installation_address,
+      modeOfCommunication: row.mode_of_communication,
+      rnNo: row.rn_no,
+      stage: row.stage,
+      stageInitialContactAt: row.stage_initial_contact_at,
+      stageSiteVisitScheduledAt: row.stage_site_visit_scheduled_at,
+      stageSiteVisitCompletedAt: row.stage_site_visit_completed_at,
+      stageQuoteSentAt: row.stage_quote_sent_at,
+      stageQuoteAcceptedAt: row.stage_quote_accepted_at,
+      stageInstallationScheduledAt: row.stage_installation_scheduled_at,
+      stageInstallationCompleteAt: row.stage_installation_complete_at,
+      stageJobCheckoutCompleteAt: row.stage_job_checkout_complete_at,
+      remarks: row.remarks,
+      sourceStatusRaw: row.source_status_raw,
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
   subscribeToReadyQueue(callback) {
     if (this.isConfigured()) {
       try {
