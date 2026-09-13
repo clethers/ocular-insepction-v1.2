@@ -18,6 +18,26 @@ who understands this will POST up to ~306 real customer records
 (names, phone numbers, emails, addresses) into it. Rows with no
 determinable pipeline stage (blank spacer/section-header rows in the
 sheet) are skipped; see build_row() below.
+
+DUPLICATE legacy_row_id PAIRS IN SOURCE DATA:
+The source spreadsheet contains 3 pairs of rows sharing the same
+legacy_row_id, which will cause silent data loss at upsert time:
+
+  - INSTCOM_1570123: rows 126 and 260 (both "Mark Angelo Fermo")
+    Likely a genuine duplicate entry.
+  - INSTCOM_1569031: rows 222 and 256 (both "Vic Lacaya")
+    Likely a genuine duplicate entry.
+  - INSTCOM_1562106: rows 253 and 263 (different customers: Emie Dy
+    vs. Johannson Lester Lim)
+    REAL DATA LOSS — one of two different customers will not be
+    imported, as only one row per legacy_row_id will survive the
+    on_conflict=legacy_row_id upsert (last row in the batch wins).
+
+RECOMMENDATION: Before running this script, either:
+  (a) Disambiguate the source spreadsheet by fixing the duplicate ids, or
+  (b) Accept and explicitly document which of the colliding rows you want
+      to keep (especially critical for rows 253/263, where they are
+      different real people).
 """
 import json
 import os
