@@ -52,9 +52,12 @@ export class SalesPipeline {
   renderShell() {
     return `
       <div class="form-card" style="padding: 1.5rem; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow-sm);">
-        <div style="margin-bottom: 0.5rem;">
-          <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a; margin-bottom: 0.25rem;">Sales Pipeline</h3>
-          <p style="font-size: 0.825rem; color: #64748b; margin: 0;">Every lead from first contact through installation, searchable by name, RN number, or contact number.</p>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a; margin-bottom: 0.25rem;">Sales Pipeline</h3>
+            <p style="font-size: 0.825rem; color: #64748b; margin: 0;">Every lead from first contact through installation, searchable by name, RN number, or contact number.</p>
+          </div>
+          <button type="button" class="btn btn-primary" id="btn-add-lead" style="padding: 0.6rem 1rem; font-size: 0.825rem;">+ Add Lead</button>
         </div>
 
         <div style="display: flex; gap: 0.75rem; margin: 1.25rem 0; flex-wrap: wrap;">
@@ -69,6 +72,13 @@ export class SalesPipeline {
 
         <div id="pipeline-list">
           <div style="text-align: center; padding: 2rem; color: #64748b;">Loading sales leads...</div>
+        </div>
+      </div>
+
+      <!-- Add Lead Overlay -->
+      <div class="modal-overlay no-print" id="add-lead-overlay" style="display: none;">
+        <div class="modal-dialog" style="max-width: 520px;">
+          <div id="add-lead-content"></div>
         </div>
       </div>
     `;
@@ -90,6 +100,24 @@ export class SalesPipeline {
         this.renderList();
       });
     }
+
+    const addLeadBtn = this.container.querySelector('#btn-add-lead');
+    if (addLeadBtn) {
+      addLeadBtn.addEventListener('click', () => this.openAddLeadOverlay());
+    }
+
+    const addLeadOverlay = this.container.querySelector('#add-lead-overlay');
+    if (addLeadOverlay) {
+      addLeadOverlay.addEventListener('click', (e) => {
+        if (e.target === addLeadOverlay) this.closeAddLeadOverlay();
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const overlayEl = this.container.querySelector('#add-lead-overlay');
+      if (overlayEl && overlayEl.style.display !== 'none') this.closeAddLeadOverlay();
+    });
   }
 
   getFilteredLeads() {
@@ -199,5 +227,114 @@ export class SalesPipeline {
         `).join('')}
       </div>
     `;
+  }
+
+  openAddLeadOverlay() {
+    const overlay = this.container.querySelector('#add-lead-overlay');
+    const content = this.container.querySelector('#add-lead-content');
+    if (!overlay || !content) return;
+
+    content.innerHTML = `
+      <h3 class="modal-title">Add Lead</h3>
+      <p class="modal-subtitle">New leads start at Initial Customer Contact.</p>
+
+      <div class="form-group">
+        <label class="form-label">First Name</label>
+        <input type="text" class="form-input" id="lead-first-name" placeholder="Juan" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Last Name</label>
+        <input type="text" class="form-input" id="lead-last-name" placeholder="Dela Cruz" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Contact Number <span class="form-label-note">(optional)</span></label>
+        <input type="text" class="form-input" id="lead-contact-no" placeholder="639171234567" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email <span class="form-label-note">(optional)</span></label>
+        <input type="email" class="form-input" id="lead-email" placeholder="juan@email.com" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Installation Address <span class="form-label-note">(optional)</span></label>
+        <input type="text" class="form-input" id="lead-address" placeholder="Unit 4B, Green Meadows, Quezon City" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Mode of Communication <span class="form-label-note">(optional)</span></label>
+        <select class="form-select" id="lead-mode">
+          <option value="">Not specified</option>
+          <option value="Phone Call">Phone Call</option>
+          <option value="Viber">Viber</option>
+          <option value="Email">Email</option>
+          <option value="Walk-in">Walk-in</option>
+        </select>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="btn-cancel-add-lead">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-add-lead">Save Lead</button>
+      </div>
+    `;
+
+    content.querySelector('#btn-cancel-add-lead').addEventListener('click', () => this.closeAddLeadOverlay());
+    content.querySelector('#btn-confirm-add-lead').addEventListener('click', (e) => this.confirmAddLead(e.currentTarget));
+
+    overlay.style.display = 'flex';
+  }
+
+  closeAddLeadOverlay() {
+    const overlay = this.container.querySelector('#add-lead-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  async confirmAddLead(btn) {
+    const content = this.container.querySelector('#add-lead-content');
+    const firstName = content.querySelector('#lead-first-name').value.trim();
+    const lastName = content.querySelector('#lead-last-name').value.trim();
+
+    if (!firstName || !lastName) {
+      AppLayout.showToast('First and last name are required.');
+      return;
+    }
+
+    const contactNo = content.querySelector('#lead-contact-no').value.trim();
+    const email = content.querySelector('#lead-email').value.trim();
+    const installationAddress = content.querySelector('#lead-address').value.trim();
+    const modeOfCommunication = content.querySelector('#lead-mode').value;
+
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    try {
+      const user = await AuthGuard.getSessionUser();
+      const lead = await supabaseService.createSalesLead({
+        firstName,
+        lastName,
+        contactNo: contactNo || null,
+        email: email || null,
+        installationAddress: installationAddress || null,
+        modeOfCommunication: modeOfCommunication || null,
+        createdBy: user?.id || null
+      });
+      auditLogService.logEvent({
+        category: AUDIT_CATEGORIES.CLIENT_RECORDS,
+        eventType: 'SALES_LEAD_CREATED',
+        description: `Added sales lead "${lead.clientName}"`,
+        severity: AUDIT_SEVERITY.INFO
+      });
+      this.leads.unshift(lead);
+      this.closeAddLeadOverlay();
+      AppLayout.showToast(`Lead added: ${lead.clientName}`);
+      this.renderList();
+    } catch (e) {
+      console.warn('[OIMS] Could not create sales lead:', e);
+      AppLayout.showToast('Could not add lead — check your connection and try again.');
+      btn.disabled = false;
+      btn.textContent = 'Save Lead';
+    }
   }
 }
