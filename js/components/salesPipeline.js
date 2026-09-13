@@ -34,6 +34,7 @@ export class SalesPipeline {
     this.leads = [];
     this.searchQuery = '';
     this.stageFilter = 'ALL';
+    this.pendingImportRows = [];
   }
 
   async render() {
@@ -57,7 +58,11 @@ export class SalesPipeline {
             <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a; margin-bottom: 0.25rem;">Sales Pipeline</h3>
             <p style="font-size: 0.825rem; color: #64748b; margin: 0;">Every lead from first contact through installation, searchable by name, RN number, or contact number.</p>
           </div>
-          <button type="button" class="btn btn-primary" id="btn-add-lead" style="padding: 0.6rem 1rem; font-size: 0.825rem;">+ Add Lead</button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-outline" id="btn-import-leads" style="padding: 0.6rem 1rem; font-size: 0.825rem;">Import CSV</button>
+            <input type="file" id="input-import-leads-file" accept=".csv,text/csv" style="display: none;" />
+            <button type="button" class="btn btn-primary" id="btn-add-lead" style="padding: 0.6rem 1rem; font-size: 0.825rem;">+ Add Lead</button>
+          </div>
         </div>
 
         <div style="display: flex; gap: 0.75rem; margin: 1.25rem 0; flex-wrap: wrap;">
@@ -86,6 +91,13 @@ export class SalesPipeline {
       <div class="modal-overlay no-print" id="lead-detail-overlay" style="display: none;">
         <div class="modal-dialog" style="max-width: 640px;">
           <div id="lead-detail-content"></div>
+        </div>
+      </div>
+
+      <!-- Import Leads Preview Overlay -->
+      <div class="modal-overlay no-print" id="import-leads-overlay" style="display: none;">
+        <div class="modal-dialog" style="max-width: 760px; max-height: 85vh; display: flex; flex-direction: column;">
+          <div id="import-leads-content" style="overflow-y: auto;"></div>
         </div>
       </div>
     `;
@@ -137,6 +149,30 @@ export class SalesPipeline {
       if (e.key !== 'Escape') return;
       const overlayEl = this.container.querySelector('#lead-detail-overlay');
       if (overlayEl && overlayEl.style.display !== 'none') this.closeDetail();
+    });
+
+    const importBtn = this.container.querySelector('#btn-import-leads');
+    const importFileInput = this.container.querySelector('#input-import-leads-file');
+    if (importBtn && importFileInput) {
+      importBtn.addEventListener('click', () => importFileInput.click());
+      importFileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) this.handleImportFile(file);
+        importFileInput.value = '';
+      });
+    }
+
+    const importOverlay = this.container.querySelector('#import-leads-overlay');
+    if (importOverlay) {
+      importOverlay.addEventListener('click', (e) => {
+        if (e.target === importOverlay) this.closeImportOverlay();
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const overlayEl = this.container.querySelector('#import-leads-overlay');
+      if (overlayEl && overlayEl.style.display !== 'none') this.closeImportOverlay();
     });
   }
 
@@ -527,6 +563,199 @@ export class SalesPipeline {
       console.warn('[OIMS] Could not archive sales lead:', e);
       AppLayout.showToast('Could not archive — check your connection and try again.');
       btn.disabled = false;
+    }
+  }
+
+  // Minimal RFC4180-style CSV parser — handles quoted fields, embedded
+  // commas, and escaped ("") quotes. Same implementation as
+  // ClientDirectory.parseCSV; not meant to handle arbitrary spreadsheet
+  // exports, just a simple lead-import sheet.
+  parseCSV(text) {
+    const rows = [];
+    let row = [];
+    let field = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (inQuotes) {
+        if (char === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }
+          else inQuotes = false;
+        } else {
+          field += char;
+        }
+      } else if (char === '"') {
+        inQuotes = true;
+      } else if (char === ',') {
+        row.push(field);
+        field = '';
+      } else if (char === '\n' || char === '\r') {
+        if (char === '\r' && text[i + 1] === '\n') i++;
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = '';
+      } else {
+        field += char;
+      }
+    }
+    if (field !== '' || row.length > 0) {
+      row.push(field);
+      rows.push(row);
+    }
+
+    return rows.filter(r => r.some(cell => cell.trim() !== ''));
+  }
+
+  async handleImportFile(file) {
+    const text = await file.text();
+    const rows = this.parseCSV(text);
+
+    if (rows.length < 2) {
+      AppLayout.showToast('CSV file has no data rows.');
+      return;
+    }
+
+    const headers = rows[0].map(h => h.trim().toLowerCase());
+    const colIndex = (names) => {
+      for (const name of names) {
+        const i = headers.indexOf(name);
+        if (i !== -1) return i;
+      }
+      return -1;
+    };
+
+    const idx = {
+      firstName: colIndex(['first name', 'firstname']),
+      lastName: colIndex(['last name', 'lastname']),
+      rnNo: colIndex(['rn number', 'rn no', 'rnno', 'rn']),
+      contactNo: colIndex(['contact no', 'contact number', 'contactno', 'phone']),
+      email: colIndex(['email']),
+      installationAddress: colIndex(['installation address', 'address', 'location']),
+      modeOfCommunication: colIndex(['mode of communication', 'mode']),
+      stage: colIndex(['stage']),
+      remarks: colIndex(['remarks'])
+    };
+
+    if (idx.firstName === -1 || idx.lastName === -1) {
+      AppLayout.showToast('CSV must include "First Name" and "Last Name" columns.');
+      return;
+    }
+
+    const get = (cols, i) => (i !== -1 && cols[i] !== undefined) ? cols[i].trim() : '';
+    const stageKeys = new Set(STAGES.map(s => s.key));
+
+    this.pendingImportRows = rows.slice(1).map((cols, i) => {
+      const firstName = get(cols, idx.firstName);
+      const lastName = get(cols, idx.lastName);
+      const stageRaw = get(cols, idx.stage).toUpperCase().replace(/\s+/g, '_');
+      const errors = [];
+      if (!firstName) errors.push('Missing First Name');
+      if (!lastName) errors.push('Missing Last Name');
+      if (stageRaw && !stageKeys.has(stageRaw)) errors.push(`Unrecognized stage "${get(cols, idx.stage)}"`);
+
+      return {
+        rowNum: i + 2,
+        firstName,
+        lastName,
+        rnNo: get(cols, idx.rnNo),
+        contactNo: get(cols, idx.contactNo),
+        email: get(cols, idx.email),
+        installationAddress: get(cols, idx.installationAddress),
+        modeOfCommunication: get(cols, idx.modeOfCommunication),
+        stage: stageKeys.has(stageRaw) ? stageRaw : 'INITIAL_CONTACT',
+        remarks: get(cols, idx.remarks),
+        errors
+      };
+    });
+
+    this.openImportOverlay();
+  }
+
+  openImportOverlay() {
+    const overlay = this.container.querySelector('#import-leads-overlay');
+    const content = this.container.querySelector('#import-leads-content');
+    if (!overlay || !content) return;
+
+    const validRows = this.pendingImportRows.filter(r => r.errors.length === 0);
+    const invalidCount = this.pendingImportRows.length - validRows.length;
+
+    content.innerHTML = `
+      <h3 class="modal-title">Import Leads from CSV</h3>
+      <p class="modal-subtitle">
+        ${this.pendingImportRows.length} row${this.pendingImportRows.length === 1 ? '' : 's'} found — ${validRows.length} ready to import${invalidCount ? `, ${invalidCount} skipped due to errors` : ''}.
+      </p>
+
+      <div style="overflow: auto; border: 1px solid #e2e8f0; border-radius: var(--radius-lg); max-height: 340px;">
+        <table class="directory-table">
+          <thead>
+            <tr>
+              <th>Row</th>
+              <th>Name</th>
+              <th>RN Number</th>
+              <th>Contact No</th>
+              <th>Stage</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${this.pendingImportRows.map(r => `
+              <tr style="${r.errors.length ? 'background: #fef2f2;' : ''}">
+                <td style="color: #64748b;">${r.rowNum}</td>
+                <td style="font-weight: 600; color: #0f172a;">${escapeHTML(`${r.firstName} ${r.lastName}`.trim() || '—')}</td>
+                <td style="color: var(--ecoworks-blue); font-weight: 700;">${escapeHTML(r.rnNo || '—')}</td>
+                <td style="color: #64748b;">${escapeHTML(r.contactNo || '—')}</td>
+                <td style="color: ${r.errors.length ? '#dc2626' : '#64748b'};">${r.errors.length ? escapeHTML(r.errors.join(', ')) : escapeHTML(stageMeta(r.stage).label)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="btn-cancel-import-leads">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-import-leads" ${validRows.length === 0 ? 'disabled' : ''}>Import ${validRows.length} Lead${validRows.length === 1 ? '' : 's'}</button>
+      </div>
+    `;
+
+    content.querySelector('#btn-cancel-import-leads').addEventListener('click', () => this.closeImportOverlay());
+    const confirmBtn = content.querySelector('#btn-confirm-import-leads');
+    if (confirmBtn) confirmBtn.addEventListener('click', (e) => this.confirmImport(e.currentTarget));
+
+    overlay.style.display = 'flex';
+  }
+
+  closeImportOverlay() {
+    const overlay = this.container.querySelector('#import-leads-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  async confirmImport(btn) {
+    const validRows = this.pendingImportRows.filter(r => r.errors.length === 0);
+    if (validRows.length === 0) return;
+
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Importing...';
+
+    try {
+      const imported = await supabaseService.bulkImportSalesLeads(validRows);
+      auditLogService.logEvent({
+        category: AUDIT_CATEGORIES.CLIENT_RECORDS,
+        eventType: 'SALES_LEADS_IMPORTED',
+        description: `Imported ${imported.length} sales lead(s) via CSV`,
+        severity: AUDIT_SEVERITY.INFO
+      });
+      this.closeImportOverlay();
+      AppLayout.showToast(`Imported ${imported.length} lead(s).`);
+
+      this.leads = await supabaseService.fetchAllSalesLeads();
+      this.renderList();
+    } catch (err) {
+      console.warn('[OIMS SalesPipeline] Import failed:', err.message);
+      AppLayout.showToast('Could not import leads — check your connection and try again.');
+      btn.disabled = false;
+      btn.textContent = originalLabel;
     }
   }
 }
