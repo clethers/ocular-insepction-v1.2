@@ -102,6 +102,13 @@ export class SalesPipeline {
           <div id="import-leads-content" style="overflow-y: auto;"></div>
         </div>
       </div>
+
+      <!-- Assign for Inspection Overlay -->
+      <div class="modal-overlay no-print" id="assign-inspection-overlay" style="display: none;">
+        <div class="modal-dialog" style="max-width: 480px;">
+          <div id="assign-inspection-content"></div>
+        </div>
+      </div>
     `;
   }
 
@@ -175,6 +182,19 @@ export class SalesPipeline {
       if (e.key !== 'Escape') return;
       const overlayEl = this.container.querySelector('#import-leads-overlay');
       if (overlayEl && overlayEl.style.display !== 'none') this.closeImportOverlay();
+    });
+
+    const assignOverlay = this.container.querySelector('#assign-inspection-overlay');
+    if (assignOverlay) {
+      assignOverlay.addEventListener('click', (e) => {
+        if (e.target === assignOverlay) this.closeAssignInspectionOverlay();
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      const overlayEl = this.container.querySelector('#assign-inspection-overlay');
+      if (overlayEl && overlayEl.style.display !== 'none') this.closeAssignInspectionOverlay();
     });
   }
 
@@ -286,7 +306,10 @@ export class SalesPipeline {
                 <td data-label="Stage">${badge(l.stage)}</td>
                 <td data-label="Contact No" style="color: #64748b;">${escapeHTML(l.contactNo || 'N/A')}</td>
                 <td data-label="Last Updated" style="color: #64748b;">${fmtDate(l.updatedAt)}</td>
-                <td data-label="Actions" style="text-align: right;"><button type="button" class="btn-link btn-view-lead" data-id="${l.id}">View Details</button></td>
+                <td data-label="Actions" style="text-align: right;">
+                  <button type="button" class="btn-link btn-view-lead" data-id="${l.id}">View Details</button>
+                  <button type="button" class="btn-link btn-assign-inspection" data-id="${l.id}" style="margin-left: 0.6rem;">Assign for Inspection</button>
+                </td>
               </tr>
             `).join('')}
           </tbody>
@@ -308,6 +331,7 @@ export class SalesPipeline {
             <div class="record-sub">${escapeHTML(l.installationAddress || 'No address on file')}</div>
             <div class="record-actions">
               <button type="button" class="btn-view-lead" data-id="${l.id}">View Details</button>
+              <button type="button" class="btn-assign-inspection" data-id="${l.id}">Assign for Inspection</button>
             </div>
           </div>
         `).join('')}
@@ -329,6 +353,10 @@ export class SalesPipeline {
 
     listEl.querySelectorAll('.btn-view-lead').forEach(btn => {
       btn.addEventListener('click', () => this.openDetail(btn.getAttribute('data-id')));
+    });
+
+    listEl.querySelectorAll('.btn-assign-inspection').forEach(btn => {
+      btn.addEventListener('click', () => this.openAssignInspectionOverlay(btn.getAttribute('data-id')));
     });
   }
 
@@ -825,6 +853,103 @@ export class SalesPipeline {
       AppLayout.showToast('Could not import leads — check your connection and try again.');
       btn.disabled = false;
       btn.textContent = originalLabel;
+    }
+  }
+
+  async openAssignInspectionOverlay(id) {
+    const lead = this.leads.find(l => l.id === id);
+    if (!lead) return;
+
+    const overlay = this.container.querySelector('#assign-inspection-overlay');
+    const content = this.container.querySelector('#assign-inspection-content');
+    if (!overlay || !content) return;
+
+    content.innerHTML = `<div style="text-align: center; padding: 2rem; color: #64748b;">Loading...</div>`;
+    overlay.style.display = 'flex';
+
+    let teams = [];
+    try {
+      teams = await supabaseService.fetchFieldTeams();
+    } catch (e) {
+      console.warn('[OIMS] Could not fetch field teams:', e);
+    }
+
+    content.innerHTML = this.renderAssignInspectionContent(lead, teams);
+
+    content.querySelector('#btn-cancel-assign-inspection').addEventListener('click', () => this.closeAssignInspectionOverlay());
+    const confirmBtn = content.querySelector('#btn-confirm-assign-inspection');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', (e) => this.confirmAssignInspection(lead, e.currentTarget));
+    }
+  }
+
+  closeAssignInspectionOverlay() {
+    const overlay = this.container.querySelector('#assign-inspection-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  renderAssignInspectionContent(lead, teams) {
+    return `
+      <h3 class="modal-title">Assign for Inspection</h3>
+      <p class="modal-subtitle">Creates an Ocular Inspection record and routes it to a Field Inspector.</p>
+
+      <div style="margin: 1rem 0; padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md);">
+        <div style="font-weight: 700; color: #0f172a;">${escapeHTML(lead.clientName)}</div>
+        <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;">${lead.rnNo ? escapeHTML(lead.rnNo) + ' &middot; ' : ''}${escapeHTML(lead.installationAddress || 'No address on file')}</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="assign-team-select">Assign To</label>
+        <select class="form-select" id="assign-team-select" ${teams.length === 0 ? 'disabled' : ''}>
+          ${teams.length > 0
+            ? teams.map(t => `<option value="${escapeHTML(t.id)}">${escapeHTML(t.full_name)}</option>`).join('')
+            : `<option value="">No field teams configured</option>`}
+        </select>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="btn-cancel-assign-inspection">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-assign-inspection" ${teams.length === 0 ? 'disabled' : ''}>Confirm</button>
+      </div>
+    `;
+  }
+
+  async confirmAssignInspection(lead, btn) {
+    const content = this.container.querySelector('#assign-inspection-content');
+    const select = content.querySelector('#assign-team-select');
+    const assignedTeam = select ? select.value : '';
+    if (!assignedTeam) {
+      AppLayout.showToast('Select a team to assign this lead to.');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Assigning...';
+
+    try {
+      const user = await AuthGuard.getSessionUser();
+      await supabaseService.createStubInspection({
+        clientName: lead.clientName,
+        rnNo: lead.rnNo,
+        contactNo: lead.contactNo,
+        locationAddress: lead.installationAddress,
+        assignedTeam,
+        createdBy: user?.id || null
+      });
+      auditLogService.logEvent({
+        category: AUDIT_CATEGORIES.CLIENT_RECORDS,
+        eventType: 'SALES_LEAD_ASSIGNED_FOR_INSPECTION',
+        description: `Assigned sales lead "${lead.clientName}" for Ocular Inspection`,
+        severity: AUDIT_SEVERITY.INFO,
+        resourceId: lead.id
+      });
+      this.closeAssignInspectionOverlay();
+      AppLayout.showToast(`Assigned "${escapeHTML(lead.clientName)}" for inspection.`);
+    } catch (e) {
+      console.warn('[OIMS] Could not assign lead for inspection:', e);
+      AppLayout.showToast('Could not assign for inspection — check your connection and try again.');
+      btn.disabled = false;
+      btn.textContent = 'Confirm';
     }
   }
 }
