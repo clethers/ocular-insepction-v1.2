@@ -541,6 +541,7 @@ class SupabaseService {
     data.dateTimeDisplay = row.date_time ? new Date(row.date_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent';
     data.photos = row.photo_attachments || {};
     data.status = row.status;
+    data.createdAt = row.created_at;
     return data;
   }
 

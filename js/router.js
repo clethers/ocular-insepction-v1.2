@@ -190,10 +190,11 @@ export class Router {
 
   static async renderInspectorWorkspace(pathname) {
     const tabMatch = pathname.replace('/ocular', '').replace('/', '') || 'ocular';
-    const activeTab = ['ready', 'installation', 'history', 'ocular', 'tickets'].includes(tabMatch) ? tabMatch : 'ocular';
+    const activeTab = ['assigned', 'ready', 'installation', 'history', 'ocular', 'tickets'].includes(tabMatch) ? tabMatch : 'ocular';
 
     const titleMap = {
       ocular: 'Ocular Inspection Form',
+      assigned: 'Assigned Inspections Queue',
       ready: 'Ready for Installation Queue',
       installation: 'Installation Handover Form',
       history: 'Saved Form Drafts & Repositories',
