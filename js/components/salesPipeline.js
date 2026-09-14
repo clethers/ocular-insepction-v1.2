@@ -869,9 +869,9 @@ export class SalesPipeline {
 
     let teams = [];
     try {
-      teams = await supabaseService.fetchFieldTeams();
+      teams = await supabaseService.fetchAllFieldInspectors();
     } catch (e) {
-      console.warn('[OIMS] Could not fetch field teams:', e);
+      console.warn('[OIMS] Could not fetch field inspectors:', e);
     }
 
     content.innerHTML = this.renderAssignInspectionContent(lead, teams);

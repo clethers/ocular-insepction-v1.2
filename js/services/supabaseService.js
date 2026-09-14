@@ -97,6 +97,33 @@ class SupabaseService {
     }
   }
 
+  // Every field_inspector account, not just the two "Operations Team"
+  // pool accounts fetchFieldTeams() is scoped to — used by the Sales
+  // Pipeline "Assign for Inspection" picker, which should offer any real
+  // inspector (e.g. named individual accounts), not only the shared pool.
+  // Deliberately a separate method rather than widening fetchFieldTeams()
+  // itself, since that one's existing QA-queue routing behavior should
+  // stay unchanged.
+  async fetchAllFieldInspectors() {
+    if (!this.isConfigured()) return [];
+    try {
+      const { data, error } = await this.withTimeout(
+        this.client
+          .from('profiles')
+          .select('id, full_name')
+          .eq('role', 'field_inspector')
+          .order('full_name', { ascending: true }),
+        3000,
+        'Fetch all field inspectors'
+      );
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.warn('[OIMS Supabase] Could not fetch all field inspectors:', err.message);
+      return [];
+    }
+  }
+
   // Customer Care QA queue — submissions awaiting first-pass review, before
   // they're eligible to appear in the installer's Ready queue.
   async fetchPendingQAInspections() {
