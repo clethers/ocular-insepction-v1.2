@@ -867,18 +867,6 @@ export class SalesPipeline {
     content.innerHTML = `<div style="text-align: center; padding: 2rem; color: #64748b;">Loading...</div>`;
     overlay.style.display = 'flex';
 
-    // An Ocular Inspection record can't exist without an RN Number —
-    // it's how the rest of the app (QA queue, Ready queue, Installation
-    // matching) identifies one, and the database enforces it (rn_no is
-    // NOT NULL on ocular_inspections). Most Sales Pipeline leads don't
-    // have an RN yet, so this has to be caught here with a clear reason,
-    // not left to fail as a generic "could not assign" error later.
-    if (!lead.rnNo) {
-      content.innerHTML = this.renderAssignInspectionContent(lead, [], { missingRn: true });
-      content.querySelector('#btn-cancel-assign-inspection').addEventListener('click', () => this.closeAssignInspectionOverlay());
-      return;
-    }
-
     let teams = [];
     try {
       teams = await supabaseService.fetchAllFieldInspectors();
@@ -900,26 +888,24 @@ export class SalesPipeline {
     if (overlay) overlay.style.display = 'none';
   }
 
-  renderAssignInspectionContent(lead, teams, { missingRn = false } = {}) {
-    if (missingRn) {
-      return `
-        <h3 class="modal-title">Assign for Inspection</h3>
-        <p class="modal-subtitle">Creates an Ocular Inspection record and routes it to a Field Inspector.</p>
+  renderAssignInspectionContent(lead, teams) {
+    const hasRn = !!lead.rnNo;
 
-        <div style="margin: 1rem 0; padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md);">
-          <div style="font-weight: 700; color: #0f172a;">${escapeHTML(lead.clientName)}</div>
-          <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;">${escapeHTML(lead.installationAddress || 'No address on file')}</div>
-        </div>
-
-        <div style="padding: 0.75rem 1rem; background: #fff7ed; border: 1px solid #fdba74; border-radius: var(--radius-md); color: #9a3412; font-size: 0.85rem;">
-          This lead doesn't have an RN Number yet, so it can't be assigned for inspection — every Ocular Inspection record needs one. Add an RN Number to this lead first, then try again.
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline" id="btn-cancel-assign-inspection">Close</button>
-        </div>
-      `;
-    }
+    // An Ocular Inspection record can't exist without an RN Number —
+    // it's how the rest of the app (QA queue, Ready queue, Installation
+    // matching) identifies one, and the database enforces it (rn_no is
+    // UNIQUE NOT NULL on both sales_leads and ocular_inspections). Most
+    // Sales Pipeline leads don't have one yet, so rather than blocking
+    // the action, let Customer Care assign one right here.
+    const rnField = hasRn
+      ? `<div class="form-group">
+           <label class="form-label">RN Number</label>
+           <div style="font-family: var(--font-mono, monospace); font-weight: 700; color: var(--ecoworks-blue); padding: 0.6rem 0;">${escapeHTML(lead.rnNo)}</div>
+         </div>`
+      : `<div class="form-group">
+           <label class="form-label" for="assign-rn-input">RN Number <span class="form-label-note">(this lead doesn't have one yet)</span></label>
+           <input type="text" class="form-input" id="assign-rn-input" placeholder="e.g. RN123456789" />
+         </div>`;
 
     return `
       <h3 class="modal-title">Assign for Inspection</h3>
@@ -927,8 +913,10 @@ export class SalesPipeline {
 
       <div style="margin: 1rem 0; padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md);">
         <div style="font-weight: 700; color: #0f172a;">${escapeHTML(lead.clientName)}</div>
-        <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;">${escapeHTML(lead.rnNo)} &middot; ${escapeHTML(lead.installationAddress || 'No address on file')}</div>
+        <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;">${escapeHTML(lead.installationAddress || 'No address on file')}</div>
       </div>
+
+      ${rnField}
 
       <div class="form-group">
         <label class="form-label" for="assign-team-select">Assign To</label>
@@ -955,14 +943,32 @@ export class SalesPipeline {
       return;
     }
 
+    let rnNo = lead.rnNo;
+    if (!rnNo) {
+      const rnInput = content.querySelector('#assign-rn-input');
+      rnNo = rnInput ? rnInput.value.trim() : '';
+      if (!rnNo) {
+        AppLayout.showToast('Enter an RN Number for this lead first.');
+        return;
+      }
+    }
+
     btn.disabled = true;
     btn.textContent = 'Assigning...';
 
     try {
+      // If this lead didn't have an RN yet, save it there first — the
+      // RN belongs to the client, not just to this one inspection, so
+      // the Sales Pipeline record should carry it going forward too.
+      if (!lead.rnNo) {
+        await supabaseService.updateSalesLeadRnNo(lead.id, rnNo);
+        lead.rnNo = rnNo;
+      }
+
       const user = await AuthGuard.getSessionUser();
       await supabaseService.createStubInspection({
         clientName: lead.clientName,
-        rnNo: lead.rnNo,
+        rnNo,
         contactNo: lead.contactNo,
         locationAddress: lead.installationAddress,
         assignedTeam,
@@ -977,9 +983,13 @@ export class SalesPipeline {
       });
       this.closeAssignInspectionOverlay();
       AppLayout.showToast(`Assigned "${escapeHTML(lead.clientName)}" for inspection.`);
+      this.renderList();
     } catch (e) {
       console.warn('[OIMS] Could not assign lead for inspection:', e);
-      AppLayout.showToast('Could not assign for inspection — check your connection and try again.');
+      const message = e && e.code === '23505'
+        ? 'That RN Number is already in use by another record — try a different one.'
+        : 'Could not assign for inspection — check your connection and try again.';
+      AppLayout.showToast(message);
       btn.disabled = false;
       btn.textContent = 'Confirm';
     }

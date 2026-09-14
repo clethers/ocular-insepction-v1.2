@@ -892,6 +892,20 @@ class SupabaseService {
     if (error) throw error;
   }
 
+  // Lets Customer Care assign an RN Number to a lead that doesn't have one
+  // yet — e.g. right when they're about to send it for inspection, since
+  // an Ocular Inspection record can't exist without one (rn_no is
+  // UNIQUE NOT NULL on both sales_leads and ocular_inspections).
+  async updateSalesLeadRnNo(id, rnNo) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    const { error } = await this.withTimeout(
+      this.client.from('sales_leads').update({ rn_no: rnNo, updated_at: new Date().toISOString() }).eq('id', id),
+      3000,
+      'Update sales lead RN number'
+    );
+    if (error) throw error;
+  }
+
   async archiveSalesLead(id) {
     if (!this.isConfigured()) throw new Error('Cloud not configured');
     const { error } = await this.withTimeout(
