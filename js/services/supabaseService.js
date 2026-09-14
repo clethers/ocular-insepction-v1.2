@@ -692,6 +692,81 @@ class SupabaseService {
     }
   }
 
+  // Sales Pipeline "assign to Ocular Inspection Team" — creates a sparse
+  // stub ocular_inspections row for a lead, pre-assigned to a Field
+  // Inspector team, same sparse-insert idea as bulkImportInspections.
+  // ASSIGNED_PENDING_INSPECTION means assigned but the site visit /
+  // inspection form hasn't happened yet, distinct from PENDING_QA (form
+  // already submitted, awaiting review).
+  async createStubInspection({ clientName, rnNo, contactNo, locationAddress, assignedTeam, createdBy }) {
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
+    const payload = {
+      client_name: clientName,
+      rn_no: rnNo,
+      contact_no: contactNo || null,
+      location_address: locationAddress || null,
+      status: 'ASSIGNED_PENDING_INSPECTION',
+      assigned_team: assignedTeam,
+      created_by: createdBy || null
+    };
+
+    const { data, error } = await this.client
+      .from('ocular_inspections')
+      .insert([payload])
+      .select();
+
+    if (error) throw error;
+    return (data && data[0]) ? this.mapSupabaseToLocal(data[0]) : this.mapSupabaseToLocal(payload);
+  }
+
+  // A Field Inspector's own assignment queue — oldest-assigned-first, so
+  // the team works through what Customer Care handed them in order.
+  async fetchAssignedInspections(teamId) {
+    if (!teamId || !this.isConfigured()) return [];
+    try {
+      const { data, error } = await this.withTimeout(
+        this.client
+          .from('ocular_inspections')
+          .select('*')
+          .eq('assigned_team', teamId)
+          .eq('status', 'ASSIGNED_PENDING_INSPECTION')
+          .is('deleted_at', null)
+          .order('created_at', { ascending: true }),
+        3000,
+        'Fetch assigned inspections'
+      );
+      if (error) throw error;
+      return (data || []).map(row => this.mapSupabaseToLocal(row));
+    } catch (err) {
+      console.warn('[OIMS Supabase] Could not fetch assigned inspections:', err.message);
+      return [];
+    }
+  }
+
+  // Manager-side visibility dashboard over everything Customer Care has
+  // ever assigned — deliberately not filtered to ASSIGNED_PENDING_INSPECTION,
+  // so a row that's since progressed to PENDING_QA still shows up here.
+  async fetchAllAssignedInspections() {
+    if (!this.isConfigured()) return [];
+    try {
+      const { data, error } = await this.withTimeout(
+        this.client
+          .from('ocular_inspections')
+          .select('*')
+          .not('assigned_team', 'is', null)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false }),
+        3000,
+        'Fetch all assigned inspections'
+      );
+      if (error) throw error;
+      return (data || []).map(row => this.mapSupabaseToLocal(row));
+    } catch (err) {
+      console.warn('[OIMS Supabase] Could not fetch all assigned inspections:', err.message);
+      return [];
+    }
+  }
+
   mapSalesLeadToLocal(row) {
     const firstName = row.first_name || '';
     const lastName = row.last_name || '';
