@@ -5,6 +5,7 @@
 
 import { OcularForm } from '../forms/ocularForm.js';
 import { ReadyList } from './readyList.js';
+import { AssignedInspectionsList } from './assignedInspectionsList.js';
 import { InstallationForm } from '../forms/installationForm.js';
 import { FormStorage } from './formStorage.js';
 import { AuthGuard } from './authGuard.js';
@@ -19,6 +20,7 @@ export class InspectorWorkspace {
 
   resolveInitialTab() {
     const path = window.location.pathname.toLowerCase();
+    if (path.includes('/assigned')) return 'assigned';
     if (path.includes('/ready')) return 'ready';
     if (path.includes('/installation')) return 'installation';
     if (path.includes('/history')) return 'history';
@@ -41,6 +43,7 @@ export class InspectorWorkspace {
   updateHeaderTitleAndSidebar() {
     const titleMap = {
       ocular: 'Ocular Inspection Form',
+      assigned: 'Assigned Inspections Queue',
       ready: 'Ready for Installation Queue',
       installation: 'Installation Handover Certificate',
       history: 'Saved Form Drafts & Repositories',
@@ -72,6 +75,24 @@ export class InspectorWorkspace {
     stage.innerHTML = '';
 
     switch (this.activeTab) {
+      case 'assigned': {
+        const assignedView = new AssignedInspectionsList(stage, (selectedInspection) => {
+          this.activeTab = 'ocular';
+          this.selectedAssignedInspection = selectedInspection;
+          if (selectedInspection) {
+            try {
+              sessionStorage.setItem('oims_selected_assigned_inspection', JSON.stringify(selectedInspection));
+            } catch (e) {
+              console.warn('[OIMS] Could not store selected assigned inspection:', e);
+            }
+          }
+          import('../router.js').then(({ Router }) => Router.navigate('/ocular'));
+          this.updateHeaderTitleAndSidebar();
+          this.renderTabStage();
+        });
+        assignedView.render();
+        break;
+      }
       case 'ready': {
         const readyView = new ReadyList(stage, (selectedItem) => {
           this.activeTab = 'installation';
@@ -117,6 +138,25 @@ export class InspectorWorkspace {
       default: {
         const ocularView = new OcularForm(stage);
         ocularView.render();
+
+        let assignedData = this.selectedAssignedInspection;
+        if (!assignedData) {
+          try {
+            const stored = sessionStorage.getItem('oims_selected_assigned_inspection');
+            if (stored) assignedData = JSON.parse(stored);
+          } catch (e) {
+            console.warn('[OIMS] Could not retrieve stored assigned inspection:', e);
+          }
+        }
+        if (assignedData) {
+          this.selectedAssignedInspection = null;
+          try {
+            sessionStorage.removeItem('oims_selected_assigned_inspection');
+          } catch (e) {
+            console.warn('[OIMS] Could not clear stored assigned inspection:', e);
+          }
+          ocularView.populateFormData(assignedData, { silent: true });
+        }
         break;
       }
     }
