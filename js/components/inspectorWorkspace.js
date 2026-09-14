@@ -150,11 +150,17 @@ export class InspectorWorkspace {
         }
         if (assignedData) {
           this.selectedAssignedInspection = null;
-          try {
-            sessionStorage.removeItem('oims_selected_assigned_inspection');
-          } catch (e) {
-            console.warn('[OIMS] Could not clear stored assigned inspection:', e);
-          }
+          // Deliberately NOT clearing sessionStorage here (matching the
+          // existing Ready -> Installation flow's oims_selected_installation,
+          // which is never cleared either): the 'assigned' tab's callback
+          // above triggers BOTH an async Router.navigate('/ocular') and an
+          // immediate synchronous renderTabStage() on the current instance.
+          // The synchronous call runs first, and used to clear this key —
+          // by the time the async navigate's fresh InspectorWorkspace
+          // instance rendered (replacing this one's DOM entirely), the key
+          // was already gone, so the form the user actually saw was always
+          // blank. Leaving it in place lets whichever render happens last
+          // still read it.
           ocularView.populateFormData(assignedData, { silent: true });
         }
         break;
