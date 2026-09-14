@@ -867,6 +867,18 @@ export class SalesPipeline {
     content.innerHTML = `<div style="text-align: center; padding: 2rem; color: #64748b;">Loading...</div>`;
     overlay.style.display = 'flex';
 
+    // An Ocular Inspection record can't exist without an RN Number —
+    // it's how the rest of the app (QA queue, Ready queue, Installation
+    // matching) identifies one, and the database enforces it (rn_no is
+    // NOT NULL on ocular_inspections). Most Sales Pipeline leads don't
+    // have an RN yet, so this has to be caught here with a clear reason,
+    // not left to fail as a generic "could not assign" error later.
+    if (!lead.rnNo) {
+      content.innerHTML = this.renderAssignInspectionContent(lead, [], { missingRn: true });
+      content.querySelector('#btn-cancel-assign-inspection').addEventListener('click', () => this.closeAssignInspectionOverlay());
+      return;
+    }
+
     let teams = [];
     try {
       teams = await supabaseService.fetchAllFieldInspectors();
@@ -888,14 +900,34 @@ export class SalesPipeline {
     if (overlay) overlay.style.display = 'none';
   }
 
-  renderAssignInspectionContent(lead, teams) {
+  renderAssignInspectionContent(lead, teams, { missingRn = false } = {}) {
+    if (missingRn) {
+      return `
+        <h3 class="modal-title">Assign for Inspection</h3>
+        <p class="modal-subtitle">Creates an Ocular Inspection record and routes it to a Field Inspector.</p>
+
+        <div style="margin: 1rem 0; padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md);">
+          <div style="font-weight: 700; color: #0f172a;">${escapeHTML(lead.clientName)}</div>
+          <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;">${escapeHTML(lead.installationAddress || 'No address on file')}</div>
+        </div>
+
+        <div style="padding: 0.75rem 1rem; background: #fff7ed; border: 1px solid #fdba74; border-radius: var(--radius-md); color: #9a3412; font-size: 0.85rem;">
+          This lead doesn't have an RN Number yet, so it can't be assigned for inspection — every Ocular Inspection record needs one. Add an RN Number to this lead first, then try again.
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="btn-cancel-assign-inspection">Close</button>
+        </div>
+      `;
+    }
+
     return `
       <h3 class="modal-title">Assign for Inspection</h3>
       <p class="modal-subtitle">Creates an Ocular Inspection record and routes it to a Field Inspector.</p>
 
       <div style="margin: 1rem 0; padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md);">
         <div style="font-weight: 700; color: #0f172a;">${escapeHTML(lead.clientName)}</div>
-        <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;">${lead.rnNo ? escapeHTML(lead.rnNo) + ' &middot; ' : ''}${escapeHTML(lead.installationAddress || 'No address on file')}</div>
+        <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;">${escapeHTML(lead.rnNo)} &middot; ${escapeHTML(lead.installationAddress || 'No address on file')}</div>
       </div>
 
       <div class="form-group">
