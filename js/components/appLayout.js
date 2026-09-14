@@ -105,6 +105,11 @@ export class AppLayout {
                 <span>Installations</span>
               </a>
 
+              <a href="/manager/pendingvisits" class="sidebar-nav-btn ${isActive('/manager/pendingvisits') ? 'active' : ''}" title="Pending Site Visits">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Pending Site Visits</span>
+              </a>
+
               <a class="sidebar-nav-btn disabled" title="Field Operations Calendar (Coming Soon)" aria-disabled="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 <span>Field Calendar</span>

@@ -11,11 +11,12 @@ import { ClientDirectory } from './clientDirectory.js';
 import { InstallationsDirectory } from './installationsDirectory.js';
 import { SupportTicketsPanel } from './supportTicketsPanel.js';
 import { SalesPipeline } from './salesPipeline.js';
+import { PendingSiteVisits } from './pendingSiteVisits.js';
 
 export class ManagerWorkspace {
   constructor(container) {
     this.container = container;
-    this.activeTab = 'qa'; // 'dispatch', 'qa', 'pipeline', 'clientsearch', 'installations', 'calendar', 'tickets', 'materials', 'sms', 'kpis' — qa is the only tab wired to real data, so it's the default landing tab
+    this.activeTab = 'qa'; // 'dispatch', 'qa', 'pipeline', 'pendingvisits', 'clientsearch', 'installations', 'calendar', 'tickets', 'materials', 'sms', 'kpis' — qa is the only tab wired to real data, so it's the default landing tab
     this.pendingQAItems = [];
     this.qaLoading = false;
     this.qaLoaded = false;
@@ -29,7 +30,7 @@ export class ManagerWorkspace {
 
         <!-- Stage Container -->
         <div id="manager-tab-stage">
-          ${(this.activeTab === 'pipeline' || this.activeTab === 'clientsearch' || this.activeTab === 'installations' || this.activeTab === 'tickets') ? '' : this.renderTabStage()}
+          ${(this.activeTab === 'pipeline' || this.activeTab === 'pendingvisits' || this.activeTab === 'clientsearch' || this.activeTab === 'installations' || this.activeTab === 'tickets') ? '' : this.renderTabStage()}
         </div>
 
       </div>
@@ -46,6 +47,11 @@ export class ManagerWorkspace {
     if (this.activeTab === 'pipeline') {
       const stage = this.container.querySelector('#manager-tab-stage');
       new SalesPipeline(stage).render();
+    }
+
+    if (this.activeTab === 'pendingvisits') {
+      const stage = this.container.querySelector('#manager-tab-stage');
+      new PendingSiteVisits(stage).render();
     }
 
     if (this.activeTab === 'clientsearch') {
