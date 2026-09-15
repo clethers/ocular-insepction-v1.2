@@ -67,7 +67,7 @@
 
 .form-input, .form-select, .form-textarea {
   font-family: var(--font-sans);
-  font-size: 0.925rem;
+  font-size: 1rem;
   color: var(--text-primary);
   background: var(--bg-input);
   border: 1px solid var(--border-subtle);
@@ -1901,6 +1901,48 @@
   font-weight: 600;
   color: var(--ecoworks-blue);
   cursor: pointer;
+}
+
+/* Assigning for inspection creates a real record (unlike the read-only
+   "View Details" it sits next to), so it gets button weight instead of
+   matching that plain link — the two shouldn't read as equally low-stakes. */
+.btn-link.btn-view-lead,
+.record-actions button.btn-view-lead,
+.btn-link.btn-assign-inspection,
+.record-actions button.btn-assign-inspection {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  margin-left: 0.5rem;
+  border-radius: var(--radius-md);
+  vertical-align: middle;
+}
+
+.btn-link.btn-view-lead:first-child,
+.record-actions button.btn-view-lead:first-child {
+  margin-left: 0;
+}
+
+.btn-link.btn-view-lead:hover,
+.record-actions button.btn-view-lead:hover {
+  background: #f1f5f9;
+}
+
+.btn-link.btn-assign-inspection,
+.record-actions button.btn-assign-inspection {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--ecoworks-blue);
+  color: var(--ecoworks-blue);
+}
+
+.btn-link.btn-assign-inspection:hover,
+.record-actions button.btn-assign-inspection:hover {
+  background: var(--ecoworks-blue);
+  color: #ffffff;
+  text-decoration: none;
 }
 
 

@@ -267,6 +267,10 @@ export class SalesPipeline {
     }
 
     const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    // Clipboard-check: ties the icon to what the action actually does
+    // (creates an inspection record), not just a generic affirmative mark.
+    const assignIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg>`;
+    const viewIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>`;
     const badge = (key) => {
       const m = stageMeta(key);
       return `<span style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; font-weight: 700; padding: 0.3rem 0.6rem; border-radius: var(--radius-full); background: ${m.color}22; color: ${m.color};"><span style="width: 7px; height: 7px; border-radius: 50%; background: ${m.color};"></span>${escapeHTML(m.label)}</span>`;
@@ -307,8 +311,8 @@ export class SalesPipeline {
                 <td data-label="Contact No" style="color: #64748b;">${escapeHTML(l.contactNo || 'N/A')}</td>
                 <td data-label="Last Updated" style="color: #64748b;">${fmtDate(l.updatedAt)}</td>
                 <td data-label="Actions" style="text-align: right;">
-                  <button type="button" class="btn-link btn-view-lead" data-id="${l.id}">View Details</button>
-                  <button type="button" class="btn-link btn-assign-inspection" data-id="${l.id}" style="margin-left: 0.6rem;">Assign for Inspection</button>
+                  <button type="button" class="btn-link btn-view-lead" data-id="${l.id}" aria-label="View Details" title="View Details">${viewIcon}</button>
+                  <button type="button" class="btn-link btn-assign-inspection" data-id="${l.id}" aria-label="Assign for Inspection" title="Assign for Inspection">${assignIcon}</button>
                 </td>
               </tr>
             `).join('')}
@@ -330,8 +334,8 @@ export class SalesPipeline {
             </div>
             <div class="record-sub">${escapeHTML(l.installationAddress || 'No address on file')}</div>
             <div class="record-actions">
-              <button type="button" class="btn-view-lead" data-id="${l.id}">View Details</button>
-              <button type="button" class="btn-assign-inspection" data-id="${l.id}">Assign for Inspection</button>
+              <button type="button" class="btn-view-lead" data-id="${l.id}" aria-label="View Details" title="View Details">${viewIcon}</button>
+              <button type="button" class="btn-assign-inspection" data-id="${l.id}" aria-label="Assign for Inspection" title="Assign for Inspection">${assignIcon}</button>
             </div>
           </div>
         `).join('')}
