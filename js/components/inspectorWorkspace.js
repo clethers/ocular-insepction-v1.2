@@ -86,9 +86,15 @@ export class InspectorWorkspace {
               console.warn('[OIMS] Could not store selected assigned inspection:', e);
             }
           }
+          // Router.navigate() below fully re-renders the page (a fresh
+          // InspectorWorkspace instance via AppLayout.init), so it alone
+          // is the render that reaches the screen. Deliberately NOT also
+          // calling updateHeaderTitleAndSidebar()/renderTabStage() here
+          // synchronously on this (soon-discarded) instance — that used
+          // to run first, consume+clear the sessionStorage payload for a
+          // render nobody ever saw, leaving the real one empty. See the
+          // 'ocular' case below for the single point the payload is read.
           import('../router.js').then(({ Router }) => Router.navigate('/ocular'));
-          this.updateHeaderTitleAndSidebar();
-          this.renderTabStage();
         });
         assignedView.render();
         break;
@@ -150,17 +156,19 @@ export class InspectorWorkspace {
         }
         if (assignedData) {
           this.selectedAssignedInspection = null;
-          // Deliberately NOT clearing sessionStorage here (matching the
-          // existing Ready -> Installation flow's oims_selected_installation,
-          // which is never cleared either): the 'assigned' tab's callback
-          // above triggers BOTH an async Router.navigate('/ocular') and an
-          // immediate synchronous renderTabStage() on the current instance.
-          // The synchronous call runs first, and used to clear this key —
-          // by the time the async navigate's fresh InspectorWorkspace
-          // instance rendered (replacing this one's DOM entirely), the key
-          // was already gone, so the form the user actually saw was always
-          // blank. Leaving it in place lets whichever render happens last
-          // still read it.
+          // Clear it here — this is now the only render path that ever
+          // consumes it (the 'assigned' case above no longer also
+          // renders synchronously), so it's safe to remove once applied.
+          // Without this, every later visit to the Ocular tab (a plain
+          // sidebar click, browser back, a reload) would keep silently
+          // re-populating this same stale record into a fresh, unrelated
+          // inspection, since populateFormData's {silent:true} gives no
+          // visible warning that it happened.
+          try {
+            sessionStorage.removeItem('oims_selected_assigned_inspection');
+          } catch (e) {
+            console.warn('[OIMS] Could not clear stored assigned inspection:', e);
+          }
           ocularView.populateFormData(assignedData, { silent: true });
         }
         break;

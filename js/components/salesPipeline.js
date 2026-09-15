@@ -956,11 +956,20 @@ export class SalesPipeline {
     btn.disabled = true;
     btn.textContent = 'Assigning...';
 
+    // Saving the RN and creating the stub inspection are two separate
+    // writes, not one transaction — track whether *this* attempt is the
+    // one that just set it, so a failure on the second write can undo
+    // the first rather than leaving the lead permanently stuck with an
+    // RN it can never successfully use (every retry would just reuse
+    // the same conflicting number, since a truthy lead.rnNo hides the
+    // input field it came from).
+    const justSetRn = !lead.rnNo;
+
     try {
       // If this lead didn't have an RN yet, save it there first — the
       // RN belongs to the client, not just to this one inspection, so
       // the Sales Pipeline record should carry it going forward too.
-      if (!lead.rnNo) {
+      if (justSetRn) {
         await supabaseService.updateSalesLeadRnNo(lead.id, rnNo);
         lead.rnNo = rnNo;
       }
@@ -990,6 +999,23 @@ export class SalesPipeline {
         ? 'That RN Number is already in use by another record — try a different one.'
         : 'Could not assign for inspection — check your connection and try again.';
       AppLayout.showToast(message);
+
+      if (justSetRn && lead.rnNo === rnNo) {
+        // The RN save succeeded but the inspection creation after it
+        // didn't — undo the save so the lead isn't left stuck with a
+        // number it can never successfully use, and reopen the overlay
+        // fresh so the RN field is editable again instead of showing
+        // the now-conflicting value as read-only.
+        try {
+          await supabaseService.updateSalesLeadRnNo(lead.id, null);
+        } catch (rollbackErr) {
+          console.warn('[OIMS] Could not roll back RN after failed assignment:', rollbackErr);
+        }
+        lead.rnNo = null;
+        this.openAssignInspectionOverlay(lead.id);
+        return;
+      }
+
       btn.disabled = false;
       btn.textContent = 'Confirm';
     }
