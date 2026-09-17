@@ -99,6 +99,11 @@ export class ManagerWorkspace {
     if (this.activeTab === 'qa') this.render();
   }
 
+  teamNameFor(assignedTeam) {
+    const team = this.fieldTeams.find(t => t.id === assignedTeam);
+    return team ? team.full_name : 'Unassigned';
+  }
+
   renderTabStage() {
     switch (this.activeTab) {
       case 'qa':
@@ -222,7 +227,7 @@ export class ManagerWorkspace {
                 ${item.locationAddress || 'Manila City'} | Breaker: ${item.mainBreaker || '100A'} | Voltage: ${item.voltageSystem || '230V'}
               </div>
               <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">
-                Inspected by ${item.inspectedByName || 'Field Inspector'}
+                Inspected by ${item.inspectedByName || 'Field Inspector'} &middot; Assigned Team: ${this.teamNameFor(item.assignedTeam)}
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
@@ -246,6 +251,7 @@ export class ManagerWorkspace {
               <th>Location</th>
               <th>Breaker / Voltage</th>
               <th>Inspector</th>
+              <th>Assigned Team</th>
               <th style="text-align: right;">Actions</th>
             </tr>
           </thead>
@@ -257,6 +263,7 @@ export class ManagerWorkspace {
                 <td data-label="Location" style="color: #64748b;">${item.locationAddress || 'Manila City'}</td>
                 <td data-label="Breaker / Voltage" style="color: #64748b;">${item.mainBreaker || '100A'} / ${item.voltageSystem || '230V'}</td>
                 <td data-label="Inspector" style="color: #64748b;">${item.inspectedByName || 'Field Inspector'}</td>
+                <td data-label="Assigned Team" style="color: #64748b;">${this.teamNameFor(item.assignedTeam)}</td>
                 <td data-label="Actions" style="text-align: right; white-space: nowrap;">
                   <button type="button" class="btn-link btn-qa-reject" data-rn="${item.rnNo}" style="color: #dc2626;">Request Re-inspection</button>
                   <button type="button" class="btn-link btn-qa-approve" data-rn="${item.rnNo}">Approve</button>
@@ -461,7 +468,14 @@ export class ManagerWorkspace {
     const tabBtns = this.container.querySelectorAll('.mgr-tab-btn');
     tabBtns.forEach(btn => {
       btn.addEventListener('click', () => {
-        this.activeTab = btn.getAttribute('data-tab');
+        const nextTab = btn.getAttribute('data-tab');
+        // Re-entering the QA tab should always pull fresh data — items can
+        // land in PENDING_QA anytime after the first (cached) load, and this
+        // instance persists across in-page tab switches.
+        if (nextTab === 'qa' && this.activeTab !== 'qa') {
+          this.qaLoaded = false;
+        }
+        this.activeTab = nextTab;
         this.render();
       });
     });

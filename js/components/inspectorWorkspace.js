@@ -11,6 +11,8 @@ import { FormStorage } from './formStorage.js';
 import { AuthGuard } from './authGuard.js';
 import { supabaseService } from '../services/supabaseService.js';
 import { SupportTicketsPanel } from './supportTicketsPanel.js';
+import { AppLayout } from './appLayout.js';
+import { flushPendingQueue } from '../services/syncQueue.js';
 
 export class InspectorWorkspace {
   constructor(container) {
@@ -38,6 +40,58 @@ export class InspectorWorkspace {
 
     this.updateHeaderTitleAndSidebar();
     this.renderTabStage();
+    this.renderPendingSyncBadge();
+
+    // In case connectivity returned while this tab/app instance was
+    // already open and the 'online' event was missed (e.g. it fired
+    // before this instance mounted) — catch up here too.
+    flushPendingQueue().then(() => {
+      this.renderPendingSyncBadge();
+      if (this.activeTab === 'history') this.renderTabStage();
+    });
+  }
+
+  renderPendingSyncBadge() {
+    const titleGroup = document.querySelector('.top-view-title-group');
+    if (!titleGroup) return;
+
+    const count = FormStorage.countPending();
+    let badge = document.getElementById('pending-sync-badge');
+
+    if (count === 0) {
+      if (badge) badge.remove();
+      return;
+    }
+
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.id = 'pending-sync-badge';
+      badge.className = 'badge';
+      badge.title = 'Click to sync now';
+      badge.style.cssText = 'margin-left: 0.6rem; cursor: pointer; background: rgba(245, 158, 11, 0.15); color: #d97706; font-size: 0.7rem; font-weight: 800; padding: 0.2rem 0.5rem; vertical-align: middle;';
+      badge.addEventListener('click', () => this.syncPendingNow());
+      titleGroup.appendChild(badge);
+    }
+    badge.textContent = `${count} PENDING SYNC`;
+  }
+
+  async syncPendingNow() {
+    const badge = document.getElementById('pending-sync-badge');
+    if (badge) badge.textContent = 'SYNCING…';
+
+    const result = await flushPendingQueue();
+
+    this.renderPendingSyncBadge();
+    if (this.activeTab === 'history') this.renderTabStage();
+
+    if (result.synced || result.failed) {
+      const parts = [];
+      if (result.synced) parts.push(`Synced ${result.synced}`);
+      if (result.failed) parts.push(`${result.failed} still pending (will retry automatically)`);
+      AppLayout.showToast(parts.join(' — ') + '.');
+    } else if (!navigator.onLine) {
+      AppLayout.showToast('Still offline — will sync automatically once connection returns.');
+    }
   }
 
   updateHeaderTitleAndSidebar() {
@@ -178,6 +232,7 @@ export class InspectorWorkspace {
 
   async renderHistoryStage(stage) {
     const drafts = FormStorage.listDrafts() || [];
+    const pending = FormStorage.listPending() || [];
 
     let submissions = [];
     try {
@@ -193,6 +248,32 @@ export class InspectorWorkspace {
     if (this.activeTab !== 'history') return;
 
     stage.innerHTML = `
+      ${pending.length > 0 ? `
+        <div class="form-card" style="padding: 1.5rem; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); margin-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a;">Pending Sync (Offline)</h3>
+            <button type="button" class="btn btn-secondary btn-sync-all-pending">Sync Now</button>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            ${pending.map(entry => `
+              <div style="padding: 1rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(15, 23, 42, 0.03);">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <strong style="color: #0f172a;">${entry.payload?.clientName || 'Client'}</strong>
+                    <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706; font-size: 0.7rem; font-weight: 800; padding: 0.2rem 0.5rem;">
+                      ${entry.formType === 'installation_record' ? 'INSTALLATION' : 'OCULAR'}
+                    </span>
+                  </div>
+                  <span style="font-size: 0.775rem; color: #64748b; display: block; margin-top: 0.15rem;">RN: ${entry.payload?.rnNo || 'N/A'} &middot; Queued ${new Date(entry.queuedAt).toLocaleString()}</span>
+                  ${entry.attempts > 0 ? `<span style="font-size: 0.775rem; color: #e11d48; display: block; margin-top: 0.25rem;">Last attempt failed: ${entry.lastError || 'unknown error'}</span>` : ''}
+                </div>
+                <button type="button" class="btn btn-secondary btn-sync-all-pending">Retry Now</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
       ${submissions.length > 0 ? `
         <div class="form-card" style="padding: 1.5rem; background: #ffffff; border-radius: var(--radius-xl); box-shadow: var(--shadow-sm); margin-bottom: 1.25rem;">
           <h3 style="font-weight: 800; font-size: 1.1rem; color: #0f172a; margin-bottom: 1rem;">My Submitted Inspections</h3>
@@ -265,6 +346,11 @@ export class InspectorWorkspace {
         }
         import('../router.js').then(({ Router }) => Router.navigate('/ocular'));
       });
+    });
+
+    const syncBtns = stage.querySelectorAll('.btn-sync-all-pending');
+    syncBtns.forEach(btn => {
+      btn.addEventListener('click', () => this.syncPendingNow());
     });
   }
 }

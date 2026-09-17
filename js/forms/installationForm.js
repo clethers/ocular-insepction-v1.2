@@ -804,7 +804,7 @@ export class InstallationForm {
 
     const saveDraftBtn = document.getElementById('btn-save-install-draft');
     if (saveDraftBtn) {
-      saveDraftBtn.addEventListener('click', () => {
+      saveDraftBtn.addEventListener('click', async () => {
         const form = document.getElementById('installation-form-element');
         const formData = new FormData(form);
         const data = {};
@@ -818,8 +818,23 @@ export class InstallationForm {
           if (isValidBase64Image(url)) data.clientRepSigImg = url;
         }
         FormStorage.saveDraft('installation_form', data);
-        supabaseService.saveInstallationRecord(data);
-        this.showToast('Installation Form saved & synced to Supabase Cloud!');
+
+        saveDraftBtn.disabled = true;
+        try {
+          if (!navigator.onLine) throw new Error('offline');
+          await supabaseService.saveInstallationRecord(data);
+          this.showToast('Installation Form saved & synced to Supabase Cloud!');
+        } catch (err) {
+          console.warn('[OIMS] Could not sync installation record, queuing for later sync:', err);
+          const queued = FormStorage.enqueuePending('installation_record', data);
+          if (queued) {
+            this.showToast('No connection — installation record saved on this device and will sync automatically once you\'re back online.');
+          } else {
+            this.showToast('Could not save locally either — device storage may be full. Please free up space and try again.');
+          }
+        } finally {
+          saveDraftBtn.disabled = false;
+        }
       });
     }
 

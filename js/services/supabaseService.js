@@ -2,6 +2,8 @@
  * OIMS — Supabase Integration & Hybrid Cloud Data Service
  */
 
+import { createClient } from '@supabase/supabase-js';
+
 class SupabaseService {
   constructor() {
     this.supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || localStorage.getItem('oims_supabase_url') || '';
@@ -11,9 +13,9 @@ class SupabaseService {
   }
 
   initClient() {
-    if (this.supabaseUrl && this.supabaseKey && window.supabase) {
+    if (this.supabaseUrl && this.supabaseKey) {
       try {
-        this.client = window.supabase.createClient(this.supabaseUrl, this.supabaseKey);
+        this.client = createClient(this.supabaseUrl, this.supabaseKey);
         console.log('[OIMS Supabase] Connected to live Supabase backend instance:', this.supabaseUrl);
       } catch (err) {
         console.warn('[OIMS Supabase] Initialization error:', err);
@@ -393,45 +395,43 @@ class SupabaseService {
     ['actualBoxOthers', 'actual_other_boxes_notes', false],
   ];
 
+  // Throws on failure — there's no local fallback to quietly land in
+  // instead, so a failed save must be visible to the caller rather than
+  // reported as success (see saveOcularInspection above, same reasoning).
   async saveInstallationRecord(formData) {
-    if (this.isConfigured()) {
-      try {
-        const payload = {
-          rn_no: formData.rnNo,
-          installation_no: formData.installationNo,
-          client_name: formData.clientName,
-          scope_of_works: formData.scopeOfWorks || 'Installation',
-          commissioning_data: formData.tests || {},
-          photo_attachments: formData.photos || [],
-          installer_name: formData.installerName,
-          installer_sig_img: formData.installerSigImg,
-          client_rep_name: formData.clientRepName,
-          client_rep_sig_img: formData.clientRepSigImg,
-          status: 'COMMISSIONED'
-        };
+    if (!this.isConfigured()) throw new Error('Cloud not configured');
 
-        for (const [localKey, column, isInt] of SupabaseService.ACTUAL_MATERIALS_FIELD_MAP) {
-          const raw = formData[localKey];
-          if (raw === undefined) continue;
-          if (isInt) {
-            const parsed = Number.parseInt(raw, 10);
-            payload[column] = (raw === '' || raw === null || Number.isNaN(parsed)) ? null : parsed;
-          } else {
-            payload[column] = raw;
-          }
-        }
+    const payload = {
+      rn_no: formData.rnNo,
+      installation_no: formData.installationNo,
+      client_name: formData.clientName,
+      scope_of_works: formData.scopeOfWorks || 'Installation',
+      commissioning_data: formData.tests || {},
+      photo_attachments: formData.photos || [],
+      installer_name: formData.installerName,
+      installer_sig_img: formData.installerSigImg,
+      client_rep_name: formData.clientRepName,
+      client_rep_sig_img: formData.clientRepSigImg,
+      status: 'COMMISSIONED'
+    };
 
-        const { data, error } = await this.client
-          .from('installation_records')
-          .insert([payload]);
-
-        if (error) throw error;
-        console.log('[OIMS Supabase] Saved installation record to Supabase cloud:', data);
-      } catch (err) {
-        console.warn('[OIMS Supabase] Saved locally. Sync pending:', err.message);
+    for (const [localKey, column, isInt] of SupabaseService.ACTUAL_MATERIALS_FIELD_MAP) {
+      const raw = formData[localKey];
+      if (raw === undefined) continue;
+      if (isInt) {
+        const parsed = Number.parseInt(raw, 10);
+        payload[column] = (raw === '' || raw === null || Number.isNaN(parsed)) ? null : parsed;
+      } else {
+        payload[column] = raw;
       }
     }
 
+    const { data, error } = await this.client
+      .from('installation_records')
+      .upsert(payload, { onConflict: 'rn_no' });
+
+    if (error) throw error;
+    console.log('[OIMS Supabase] Saved installation record to Supabase cloud:', data);
     return true;
   }
 

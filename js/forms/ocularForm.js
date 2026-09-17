@@ -1155,15 +1155,25 @@ export class OcularForm {
 
         readyBtn.disabled = true;
         try {
+          if (!navigator.onLine) throw new Error('offline');
           await supabaseService.saveOcularInspection(formData);
           this.showToast('Submitted for Customer Care QA Review! Synced to Supabase Cloud...');
           setTimeout(() => {
             import('../router.js').then(({ Router }) => Router.navigate('/ocular/history'));
           }, 1200);
         } catch (err) {
-          console.warn('[OIMS] Could not submit ocular inspection:', err);
-          this.showToast('Could not submit — check your connection and try again.');
-          readyBtn.disabled = false;
+          console.warn('[OIMS] Could not submit ocular inspection, queuing for later sync:', err);
+          const queued = FormStorage.enqueuePending('ocular_inspection', formData);
+          if (queued) {
+            FormStorage.clearDraft('ocular_inspection');
+            this.showToast('No connection — inspection saved on this device and will sync automatically once you\'re back online.');
+            setTimeout(() => {
+              import('../router.js').then(({ Router }) => Router.navigate('/ocular/history'));
+            }, 1200);
+          } else {
+            this.showToast('Could not save locally either — device storage may be full. Please free up space and try again.');
+            readyBtn.disabled = false;
+          }
         }
       });
     }

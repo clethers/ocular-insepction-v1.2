@@ -7,6 +7,7 @@
 import { AuthGuard } from './components/authGuard.js';
 import { AppLayout } from './components/appLayout.js';
 import { USER_ROLES } from './services/userService.js';
+import { initSyncQueueListeners, flushPendingQueue } from './services/syncQueue.js';
 
 // LoginForm / SetPasswordForm / InspectorWorkspace / ManagerWorkspace /
 // AdminWorkspace are intentionally NOT imported statically here. Each is
@@ -16,6 +17,11 @@ import { USER_ROLES } from './services/userService.js';
 
 export class Router {
   static init() {
+    initSyncQueueListeners();
+    // Attempt a flush on boot too, in case connectivity returned while the
+    // app/tab was closed and the 'online' event never fired for this load.
+    flushPendingQueue();
+
     // Intercept all internal anchor clicks for SPA routing
     document.addEventListener('click', (e) => {
       const anchor = e.target.closest('a');

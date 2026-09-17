@@ -23,16 +23,26 @@ export class ClientDirectory {
     this.sortKey = 'dateTimeDisplay';
     this.sortDir = 'desc';
     this.pendingImportRows = [];
+    this.fieldTeams = []; // "Operations Team 1/2" accounts — see fetchFieldTeams
   }
 
   async render() {
     this.container.innerHTML = this.renderShell();
     this.bindStaticEvents();
 
-    const { records, source } = await supabaseService.fetchAllInspections();
+    const [{ records, source }, fieldTeams] = await Promise.all([
+      supabaseService.fetchAllInspections(),
+      supabaseService.fetchFieldTeams()
+    ]);
     this.records = records;
     this.dataSource = source;
+    this.fieldTeams = fieldTeams;
     this.renderList();
+  }
+
+  teamNameFor(assignedTeam) {
+    const team = this.fieldTeams.find(t => t.id === assignedTeam);
+    return team ? team.full_name : 'Unassigned';
   }
 
   renderShell() {
@@ -193,6 +203,7 @@ export class ClientDirectory {
       ['Voltage System', record.voltageSystem === '220_ll' ? '220 VAC, 1 Ø, L-L' : record.voltageSystem === '220_lg' ? '220 VAC, 1 Ø, L-G' : (record.voltageSpecify || 'N/A')],
       ['Main Breaker', record.mainBreaker === 'OTHER' ? (record.mainBreakerOther || 'N/A') : (record.mainBreaker || 'N/A')],
       ['Inspected By', record.inspectedByName || 'N/A'],
+      ['Assigned Team', this.teamNameFor(record.assignedTeam)],
       ['Date Submitted', record.dateTimeDisplay || 'N/A']
     ];
 
@@ -480,6 +491,7 @@ export class ClientDirectory {
       { key: 'clientName', label: 'Client Name' },
       { key: 'locationAddress', label: 'Location' },
       { key: 'status', label: 'Status' },
+      { key: 'assignedTeam', label: 'Assigned Team' },
       { key: 'dateTimeDisplay', label: 'Date Submitted' }
     ];
 
@@ -510,6 +522,7 @@ export class ClientDirectory {
                   <td data-label="Client Name" style="font-weight: 600; color: #0f172a;">${escapeHTML(r.clientName || 'Unnamed Client')}</td>
                   <td data-label="Location" style="color: #64748b;">${escapeHTML(r.locationAddress || 'No address on file')}</td>
                   <td data-label="Status" style="color: ${statusMeta.color}; font-weight: 600;">${escapeHTML(statusMeta.label)}</td>
+                  <td data-label="Assigned Team" style="color: #64748b;">${escapeHTML(this.teamNameFor(r.assignedTeam))}</td>
                   <td data-label="Date Submitted" style="color: #64748b;">${escapeHTML(r.dateTimeDisplay || 'Recent')}</td>
                   <td data-label="Actions" style="text-align: right; white-space: nowrap;">
                     <button type="button" class="btn-link btn-view-client" data-rn="${escapeHTML(r.rnNo || '')}">View Details</button>
@@ -540,6 +553,7 @@ export class ClientDirectory {
                 <span>${escapeHTML(r.dateTimeDisplay || 'Recent')}</span>
               </div>
               <div class="record-sub">${escapeHTML(r.locationAddress || 'No address on file')}</div>
+              <div class="record-sub">Assigned Team: ${escapeHTML(this.teamNameFor(r.assignedTeam))}</div>
               <div class="record-actions">
                 <button type="button" class="btn-view-client" data-rn="${escapeHTML(r.rnNo || '')}">View Details</button>
                 <button type="button" class="btn-print-client" data-rn="${escapeHTML(r.rnNo || '')}">Print</button>
