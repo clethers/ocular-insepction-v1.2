@@ -47,12 +47,21 @@ class SupabaseService {
   // not a label). Strictly assignment-only: a record only shows up for the
   // exact team it was assigned to in the Audit QA Queue — an unassigned
   // record is invisible here until Customer Care routes it to someone.
+  // Selects only the columns the Ready for Install card/list view and its
+  // "Start Installation Form" autofill (rnNo, clientName) actually use —
+  // select('*') was pulling every column including the base64 photo/
+  // signature blobs and dozens of unused material-quantity fields, ballooning
+  // a handful of rows into a multi-megabyte response that could blow past
+  // withTimeout's 3s budget on a slower connection and silently look like
+  // "no data" instead of a slow request.
+  static READY_LIST_COLUMNS = 'id, rn_no, client_name, location_address, voltage_system, main_breaker, inspected_by_name, assigned_team, date_time, installation_no, grounding_system, estimate_distance, scope_of_works, status, created_at';
+
   async fetchReadyInspections(teamId) {
     if (this.isConfigured()) {
       try {
         let query = this.client
           .from('ocular_inspections')
-          .select('*')
+          .select(SupabaseService.READY_LIST_COLUMNS)
           .eq('status', 'READY_FOR_INSTALLATION');
 
         if (teamId) {
