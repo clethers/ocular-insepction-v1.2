@@ -6,6 +6,7 @@
 import { READY_INSTALLATIONS_PRESETS } from '../sampleData.js';
 import { supabaseService } from '../services/supabaseService.js';
 import { AuthGuard } from './authGuard.js';
+import { USER_ROLES } from '../services/userService.js';
 import { escapeHTML } from '../utils/security.js';
 
 export class ReadyList {
@@ -13,6 +14,12 @@ export class ReadyList {
     this.container = containerElement;
     this.onSelectInstallation = onSelectInstallation;
     this.viewMode = 'card'; // 'card' or 'list'
+    this.fieldTeams = [];
+  }
+
+  teamNameFor(assignedTeam) {
+    const team = this.fieldTeams.find(t => t.id === assignedTeam);
+    return team ? team.full_name : 'Unassigned';
   }
 
   async render() {
@@ -28,7 +35,20 @@ export class ReadyList {
 
     try {
       const user = await AuthGuard.getSessionUser();
-      cloudReadyItems = (await supabaseService.fetchReadyInspections(user?.id)) || [];
+      // Admin & Customer Care see every team's ready-for-installation items,
+      // so they can see who's carrying what; field inspectors (the
+      // "Operations Team" accounts) stay scoped to their own team's queue.
+      const isManagerOrAdmin = user?.role === USER_ROLES.ADMIN
+        || user?.role === USER_ROLES.CUSTOMER_CARE_MANAGER
+        || user?.role === USER_ROLES.LEAD_ENGINEER;
+      const teamScopeId = isManagerOrAdmin ? undefined : user?.id;
+
+      const [readyItems, fieldTeams] = await Promise.all([
+        supabaseService.fetchReadyInspections(teamScopeId),
+        supabaseService.fetchFieldTeams()
+      ]);
+      cloudReadyItems = readyItems || [];
+      this.fieldTeams = fieldTeams || [];
     } catch (e) {
       console.warn('[OIMS] Could not fetch cloud inspections:', e);
     }
@@ -133,6 +153,7 @@ export class ReadyList {
                 <th>Location</th>
                 <th>Feeder / Breaker</th>
                 <th>Lead Auditor</th>
+                <th>Assigned Team</th>
                 <th>Audit Date</th>
                 <th style="text-align: right;">Actions</th>
               </tr>
@@ -145,6 +166,7 @@ export class ReadyList {
                   <td data-label="Location" style="color: #64748b;">${escapeHTML(item.locationAddress || 'No address on file')}</td>
                   <td data-label="Feeder / Breaker" style="color: #64748b;">${escapeHTML(item.voltageSystem === '220_ll' ? '220V 1Ø L-L' : (item.voltageSystem === '220_lg' ? '220V 1Ø L-G' : '220V Standard'))} / ${escapeHTML(item.mainBreaker || '60A')}</td>
                   <td data-label="Lead Auditor" style="color: #64748b;">${escapeHTML(item.inspectedByName || 'Field Inspector')}</td>
+                  <td data-label="Assigned Team" style="color: #64748b;">${escapeHTML(this.teamNameFor(item.assignedTeam))}</td>
                   <td data-label="Audit Date" style="color: #64748b;">${escapeHTML(item.dateTimeDisplay || (item.dateTime ? new Date(item.dateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent'))}</td>
                   <td data-label="Actions" style="text-align: right; white-space: nowrap;">
                     <button type="button" class="btn-link btn-start-install" data-rn="${item.rnNo || item.id}">Start Installation Form</button>
@@ -222,6 +244,10 @@ export class ReadyList {
               <div class="docket-item docket-full">
                 <span class="docket-label">LEAD AUDITOR</span>
                 <span class="docket-value">${item.inspectedByName || 'Engr. Marco Santos, REE'}</span>
+              </div>
+              <div class="docket-item docket-full">
+                <span class="docket-label">ASSIGNED TEAM</span>
+                <span class="docket-value">${this.teamNameFor(item.assignedTeam)}</span>
               </div>
             </div>
           </div>
