@@ -247,13 +247,23 @@ class SupabaseService {
     return data || [];
   }
 
+  // Columns the Client Directory table, search, sort, and detail overlay
+  // actually use. Like READY_LIST_COLUMNS above, this replaces a select('*')
+  // that — with no status filter, across every inspection ever made — was
+  // by far the largest payload in the app (every base64 photo/signature
+  // blob and every material-quantity column, for every row). Printing the
+  // full certificate still needs everything, so that goes through
+  // fetchFullInspectionByRnNo() below instead, fetched on demand only when
+  // Print is actually clicked.
+  static DIRECTORY_LIST_COLUMNS = 'id, rn_no, client_name, contact_no, location_address, voltage_system, voltage_specify, main_breaker, main_breaker_other, inspected_by_name, assigned_team, date_time, status, qa_notes, created_at';
+
   async fetchAllInspections() {
     if (this.isConfigured()) {
       try {
         const { data, error } = await this.withTimeout(
           this.client
             .from('ocular_inspections')
-            .select('*')
+            .select(SupabaseService.DIRECTORY_LIST_COLUMNS)
             .is('deleted_at', null)
             .order('created_at', { ascending: false }),
           3000,
@@ -268,6 +278,30 @@ class SupabaseService {
     }
 
     return { records: [], source: 'cloud' };
+  }
+
+  // Full-detail fetch for a single record — used only when actually
+  // printing the certificate (see DIRECTORY_LIST_COLUMNS above for why the
+  // directory's list query no longer carries these fields for every row).
+  async fetchFullInspectionByRnNo(rnNo) {
+    if (!rnNo || !this.isConfigured()) return null;
+    try {
+      const { data, error } = await this.withTimeout(
+        this.client
+          .from('ocular_inspections')
+          .select('*')
+          .eq('rn_no', rnNo)
+          .order('created_at', { ascending: false })
+          .limit(1),
+        3000,
+        'Fetch full inspection record'
+      );
+      if (error) throw error;
+      return (data && data[0]) ? this.mapSupabaseToLocal(data[0]) : null;
+    } catch (err) {
+      console.warn('[OIMS Supabase] Could not fetch full inspection record:', err.message);
+      return null;
+    }
   }
 
   // Looks up the installation_records row for a given rn_no, if the

@@ -578,10 +578,20 @@ export class ClientDirectory {
     });
 
     listEl.querySelectorAll('.btn-print-client').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const rn = btn.getAttribute('data-rn');
-        const record = this.records.find(r => r.rnNo === rn);
-        if (record) printOcularCertificate(record);
+        if (!rn) return;
+        // The directory's own list data is trimmed to what the table/search
+        // need — the certificate needs everything (materials, signatures),
+        // so fetch the full row just for this one record before printing.
+        btn.disabled = true;
+        const fullRecord = await supabaseService.fetchFullInspectionByRnNo(rn);
+        btn.disabled = false;
+        if (fullRecord) {
+          printOcularCertificate(fullRecord);
+        } else {
+          AppLayout.showToast('Could not load the full record to print — please try again.');
+        }
       });
     });
 
