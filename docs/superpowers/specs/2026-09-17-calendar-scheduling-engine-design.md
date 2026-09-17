@@ -33,6 +33,24 @@ reachable from this design.
 - Soft double-booking detection: warn when a team already has an
   overlapping visit, but allow the scheduler to confirm anyway.
 
+## Consequence: retiring the installer's self-serve Ready queue
+
+`readyList.js` (the "Ready for Installation Queue" inspector tab) already
+shows every `READY_FOR_INSTALLATION` row carrying the viewer's own
+`assigned_team` — inherited automatically from the ocular stage, no
+Manager action involved — and lets an installer jump straight into the
+install form. Left as-is, this bypasses the new mandatory-date
+requirement entirely: nothing stops an installer from self-serving a
+record the Manager hasn't scheduled yet.
+
+So this design **retires** that self-serve path: `readyList.js`'s query
+changes from `status = 'READY_FOR_INSTALLATION'` to `status =
+'ASSIGNED_PENDING_INSTALLATION'`, and it now displays the scheduled
+date/time (effectively becoming the installer's "Assigned Installations"
+queue, the install-side twin of `assignedInspectionsList.js`). An
+installer can no longer start an installation until a Manager has run it
+through Assign for Installation.
+
 ## Non-goals
 
 - No Google Calendar sync (OAuth, event creation, webhooks). This design
@@ -255,13 +273,23 @@ date/team via Reschedule is the only supported change.
 
 ### 5. Team-side read-only view
 
-`inspectorWorkspace.js` — wherever the existing "Assigned Inspections"
-queue renders (built in `6c39d14`), add a compact agenda list above it:
-upcoming scheduled visits for `assigned_team = <current user id>`,
-across both `visit_type`s, sorted by `start_time`. Read-only — no
-controls, just date/time + client/RN, consistent with the "view only"
-product decision. Uses the new `fetchScheduledVisitsForTeam(teamId)`
-service method.
+Rather than a separate new widget, the scheduled date/time is surfaced
+directly on the two queues a team already checks — smaller, more
+discoverable, and consistent with "follow existing patterns":
+
+- `assignedInspectionsList.js` (`ASSIGNED_PENDING_INSPECTION` queue) — a
+  new "Scheduled Visit" column showing the visit's `start_time` (falls
+  back to "Not yet scheduled" if somehow absent, though it's mandatory
+  going forward).
+- `readyList.js` — per the retirement above, now queries
+  `ASSIGNED_PENDING_INSTALLATION` instead of `READY_FOR_INSTALLATION`
+  and gains the same "Scheduled Visit" column.
+
+Both stay read-only for teams — no edit/cancel controls, consistent
+with the "view only" product decision. Both use a new
+`fetchScheduledVisitsForTeam(teamId)` service method (returning
+`SCHEDULED` visits for that team, keyed by `ocular_inspection_id`) to
+look up the date/time to display alongside each row.
 
 ## Service layer
 
@@ -305,7 +333,10 @@ Each schedule/reschedule action logs through the existing
   assign an installation from "Ready to Assign" and confirm it moves to
   "Awaiting Installation" with the right date/time; confirm the Manager
   Calendar renders both visit types in the right day cells; log in as
-  the assigned team and confirm their agenda shows only their own
-  visits, read-only (no edit/cancel controls rendered).
+  the assigned team and confirm the "Scheduled Visit" column shows on
+  both their queues, read-only (no edit/cancel controls rendered); log
+  in as an installer and confirm a `READY_FOR_INSTALLATION` record
+  no longer appears anywhere in their workspace until a Manager has run
+  it through Assign for Installation.
 - Mobile viewport check for the calendar grid and the new modals' date
   pickers, matching the app's existing responsive pattern.
