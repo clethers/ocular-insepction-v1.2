@@ -31,6 +31,8 @@ async function runFlush() {
   }
 
   const pending = FormStorage.listPending();
+  if (pending.length === 0) return result;
+
   for (const entry of pending) {
     const saveFn = SAVE_FN_BY_FORM_TYPE[entry.formType];
     if (!saveFn) {
@@ -49,6 +51,11 @@ async function runFlush() {
     }
   }
 
+  // Lets any already-mounted UI (e.g. the pending-sync badge) pick up a
+  // sync that happened in the background — via the interval or the
+  // 'online' listener below — not just one it triggered itself.
+  window.dispatchEvent(new CustomEvent('oims:sync-flush', { detail: result }));
+
   return result;
 }
 
@@ -61,6 +68,13 @@ export function flushPendingQueue() {
   return flushPromise;
 }
 
+// How often to retry while the app is left open. Covers the case where the
+// browser never actually fires 'online' (e.g. Supabase itself was down or
+// timing out rather than the network being offline), so a stuck item would
+// otherwise wait for the next full page load or a manual "Sync Now" click.
+const AUTO_RETRY_INTERVAL_MS = 30000;
+
 export function initSyncQueueListeners() {
   window.addEventListener('online', () => flushPendingQueue());
+  setInterval(() => flushPendingQueue(), AUTO_RETRY_INTERVAL_MS);
 }

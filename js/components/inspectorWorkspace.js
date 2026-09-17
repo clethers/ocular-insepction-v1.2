@@ -49,6 +49,14 @@ export class InspectorWorkspace {
       this.renderPendingSyncBadge();
       if (this.activeTab === 'history') this.renderTabStage();
     });
+
+    // Also react to a flush the background auto-retry (or the 'online'
+    // handler) ran on its own, so the badge/history view don't sit stale
+    // after a sync this instance didn't itself trigger.
+    window.addEventListener('oims:sync-flush', () => {
+      this.renderPendingSyncBadge();
+      if (this.activeTab === 'history') this.renderTabStage();
+    });
   }
 
   renderPendingSyncBadge() {
