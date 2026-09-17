@@ -13,6 +13,7 @@ import { supabaseService } from '../services/supabaseService.js';
 import { SupportTicketsPanel } from './supportTicketsPanel.js';
 import { AppLayout } from './appLayout.js';
 import { flushPendingQueue } from '../services/syncQueue.js';
+import { escapeHTML } from '../utils/security.js';
 
 export class InspectorWorkspace {
   constructor(container) {
@@ -36,7 +37,18 @@ export class InspectorWorkspace {
         <!-- Stage Container -->
         <div id="inspector-tab-stage"></div>
       </div>
+
+      <!-- Submission Summary Overlay (read-only view of a submitted inspection) -->
+      <div class="modal-overlay no-print" id="submission-summary-overlay" style="display: none;">
+        <div class="modal-dialog" style="max-width: 640px; max-height: 85vh; overflow-y: auto;">
+          <div id="submission-summary-content"></div>
+        </div>
+      </div>
     `;
+
+    this.container.querySelector('#submission-summary-overlay').addEventListener('click', (e) => {
+      if (e.target.id === 'submission-summary-overlay') this.closeSubmissionSummary();
+    });
 
     this.updateHeaderTitleAndSidebar();
     this.renderTabStage();
@@ -298,7 +310,10 @@ export class InspectorWorkspace {
                   <span style="font-size: 0.775rem; color: #64748b; display: block; margin-top: 0.15rem;">RN: ${item.rnNo || 'N/A'}</span>
                   ${item.status === 'RE_INSPECTION_REQUESTED' && item.qaNotes ? `<span style="font-size: 0.775rem; color: #e11d48; display: block; margin-top: 0.25rem;">Customer Care: "${item.qaNotes}"</span>` : ''}
                 </div>
-                ${item.status === 'RE_INSPECTION_REQUESTED' ? `<button type="button" class="btn btn-secondary btn-resume-submission" data-rn="${item.rnNo}">Resume & Resubmit</button>` : ''}
+                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                  <button type="button" class="btn btn-outline btn-view-submission-summary" data-rn="${item.rnNo}">View Summary</button>
+                  ${item.status === 'RE_INSPECTION_REQUESTED' ? `<button type="button" class="btn btn-secondary btn-resume-submission" data-rn="${item.rnNo}">Resume & Resubmit</button>` : ''}
+                </div>
               </div>
             `).join('')}
           </div>
@@ -342,6 +357,15 @@ export class InspectorWorkspace {
       });
     });
 
+    const summaryBtns = stage.querySelectorAll('.btn-view-submission-summary');
+    summaryBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const rn = btn.getAttribute('data-rn');
+        const item = submissions.find(i => i.rnNo === rn);
+        if (item) this.openSubmissionSummary(item);
+      });
+    });
+
     const loadBtns = stage.querySelectorAll('.btn-load-draft');
     loadBtns.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -360,5 +384,140 @@ export class InspectorWorkspace {
     syncBtns.forEach(btn => {
       btn.addEventListener('click', () => this.syncPendingNow());
     });
+  }
+
+  // Read-only field groups for the "View Summary" popup — a subset of
+  // ocular_inspections' FIELD_MAP (see supabaseService.js), organized for
+  // a human to scan rather than the raw column list. Signatures are handled
+  // separately below since they render as images, not label/value rows.
+  static SUMMARY_SECTIONS = [
+    ['Site & Client', [
+      ['Client Name', 'clientName'], ['RN Number', 'rnNo'], ['Contact No.', 'contactNo'],
+      ['Location Address', 'locationAddress'], ['Scope of Works', 'scopeOfWorks'],
+      ['Date Submitted', 'dateTimeDisplay'], ['Time Start', 'timeStart'], ['Time End', 'timeEnd']
+    ]],
+    ['Electrical System', [
+      ['Voltage System', 'voltageSystem'], ['Main Breaker', 'mainBreaker'], ['Main Breaker (Other)', 'mainBreakerOther'],
+      ['No. of Branches', 'noOfBranches'], ['Spare Breaker', 'spareBreaker'], ['Space Provision', 'spaceProvision'],
+      ['Breaker Brand/Type', 'breakerBrandType'], ['Breaker Mounting', 'breakerMounting'],
+      ['Breaker Design', 'breakerDesign'], ['Breaker Pole', 'breakerPole']
+    ]],
+    ['Grounding & NEMA3R', [
+      ['Grounding System', 'groundingSystem'], ['Grounding Rod Location', 'groundingRodLocation'],
+      ['Has NEMA3R', 'hasNema3r'], ['NEMA3R Breaker', 'nema3rBreaker'], ['NEMA3R Brand/Type', 'nema3rBrandType'],
+      ['NEMA3R Mounting', 'nema3rMounting'], ['NEMA3R Design', 'nema3rDesign'], ['NEMA3R Pole', 'nema3rPole'],
+      ['Charger Location', 'chargerLocation'], ['Estimated Distance', 'estimateDistance']
+    ]],
+    ['Conduit & Material Estimate', [
+      ['PVC Conduit', 'conduitPvc'], ['EMT Conduit', 'conduitEmt'], ['IMC Conduit', 'conduitImc'],
+      ['RSC Conduit', 'conduitRsc'], ['PVC Moulding', 'conduitPvcMoulding'], ['Black Flexible', 'conduitBlackFlexible'],
+      ['PVC Flexible (Orange)', 'conduitPvcFlexibleOrange'], ['Other Conduit', 'conduitOtherType'], ['Other Conduit Qty', 'conduitOtherQty'],
+      ['EMT Elbow 90°', 'elbowEmt90'], ['IMC Elbow 90°', 'elbowImc90'], ['RSC Elbow 90°', 'elbowRsc90'],
+      ['Body LB', 'bodyLb'], ['Body LR', 'bodyLr'], ['Body LL', 'bodyLl'], ['Body C', 'bodyC'], ['Body T', 'bodyT'],
+      ['Liquid-Tight Connector', 'liquidTightConnectorQty'], ['Liquid-Tight Flex Length', 'liquidTightFlexLength'],
+      ['EMT Set-Screw Connector', 'connectorEmtSetScrew'], ['EMT Compression Connector', 'connectorEmtCompression'],
+      ['EMT Set-Screw Coupling', 'couplingEmtSetScrew'], ['EMT Compression Coupling', 'couplingEmtCompression'],
+      ['C-Clamp (2-Hole)', 'clampCTwoHole'], ['C-Clamp (1-Hole)', 'clampCOneHole'], ['Strap Clamp', 'clampStrapMalleable'],
+      ['Utility Box', 'boxUtility'], ['Square Box', 'boxSquare'], ['Octagon Box', 'boxOctagon'], ['Junction Box', 'boxJunction'],
+      ['Other Boxes', 'boxOthers']
+    ]],
+    ['Work Scope', [
+      ['Retrofitting', 'workRetrofitting'], ['Replacement', 'workReplacement'], ['New Installation', 'workNewInstallation']
+    ]],
+    ['QA Status', [
+      ['Status', 'status'], ['QA Notes', 'qaNotes'], ['QA Reviewed At', 'qaReviewedAt']
+    ]]
+  ];
+
+  static SUMMARY_CHECKBOX_KEYS = new Set(['hasNema3r', 'workRetrofitting', 'workReplacement', 'workNewInstallation']);
+
+  formatSummaryValue(key, value) {
+    if (InspectorWorkspace.SUMMARY_CHECKBOX_KEYS.has(key)) {
+      const truthy = value === 'on' || value === true || value === 'YES' || value === 'yes';
+      return truthy ? 'Yes' : '';
+    }
+    if (key === 'voltageSystem') {
+      return value === '220_ll' ? '220V 1Ø L-L' : value === '220_lg' ? '220V 1Ø L-G' : (value || '');
+    }
+    if (key === 'qaReviewedAt' && value) {
+      return new Date(value).toLocaleString();
+    }
+    return value;
+  }
+
+  // Renders one docket-style section, or '' if every field in it is empty —
+  // keeps the popup from showing 70+ mostly-blank rows for a simple audit.
+  renderSummarySection(title, fields, data) {
+    const rows = fields
+      .map(([label, key]) => [label, this.formatSummaryValue(key, data[key])])
+      .filter(([, val]) => val !== null && val !== undefined && val !== '');
+    if (rows.length === 0) return '';
+    return `
+      <div class="docket-title" style="margin-top: 1.25rem;">${escapeHTML(title)}</div>
+      <div class="docket-grid">
+        ${rows.map(([label, val]) => `
+          <div class="docket-item">
+            <span class="docket-label">${escapeHTML(label)}</span>
+            <span class="docket-value">${escapeHTML(String(val))}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  openSubmissionSummary(item) {
+    const overlay = this.container.querySelector('#submission-summary-overlay');
+    const content = this.container.querySelector('#submission-summary-content');
+    if (!overlay || !content) return;
+
+    const sectionsHtml = InspectorWorkspace.SUMMARY_SECTIONS
+      .map(([title, fields]) => this.renderSummarySection(title, fields, item))
+      .join('');
+
+    const hasSignOff = item.inspectedByName || item.inspectorSigImg || item.witnessedByName || item.witnessSigImg;
+    const signOffHtml = hasSignOff ? `
+      <div class="docket-title" style="margin-top: 1.25rem;">Inspector &amp; Witness Sign-off</div>
+      <div class="docket-grid">
+        <div class="docket-item">
+          <span class="docket-label">Inspected By</span>
+          <span class="docket-value">${escapeHTML(item.inspectedByName || 'N/A')}</span>
+        </div>
+        <div class="docket-item">
+          <span class="docket-label">Witnessed By</span>
+          <span class="docket-value">${escapeHTML(item.witnessedByName || 'N/A')}</span>
+        </div>
+        ${item.inspectorSigImg ? `
+          <div class="docket-item docket-full">
+            <span class="docket-label">Inspector Signature</span>
+            <img src="${item.inspectorSigImg}" alt="Inspector signature" style="max-width: 220px; border: 1px solid #e2e8f0; border-radius: 6px; margin-top: 0.35rem; display: block;" />
+          </div>
+        ` : ''}
+        ${item.witnessSigImg ? `
+          <div class="docket-item docket-full">
+            <span class="docket-label">Witness Signature</span>
+            <img src="${item.witnessSigImg}" alt="Witness signature" style="max-width: 220px; border: 1px solid #e2e8f0; border-radius: 6px; margin-top: 0.35rem; display: block;" />
+          </div>
+        ` : ''}
+      </div>
+    ` : '';
+
+    content.innerHTML = `
+      <h3 class="modal-title">${escapeHTML(item.clientName || 'Inspection Summary')}</h3>
+      <p class="modal-subtitle">RN: ${escapeHTML(item.rnNo || 'N/A')}</p>
+      ${sectionsHtml}
+      ${signOffHtml}
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="btn-close-submission-summary">Close</button>
+      </div>
+    `;
+
+    content.querySelector('#btn-close-submission-summary').addEventListener('click', () => this.closeSubmissionSummary());
+
+    overlay.style.display = 'flex';
+  }
+
+  closeSubmissionSummary() {
+    const overlay = this.container.querySelector('#submission-summary-overlay');
+    if (overlay) overlay.style.display = 'none';
   }
 }
